@@ -1,0 +1,20 @@
+[project]
+name = "badminton-stats"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Jeffrey", email = "jeffrey.dt.duong@gmail.com" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "pandas>=2.0.0",
+    "streamlit>=1.50.0",
+]
+
+[project.scripts]
+badminton-stats = "badminton_stats:main"
+
+[build-system]
+requires = ["uv_build>=0.12.22,<0.13.0"]
+build-backend = "uv_build"
