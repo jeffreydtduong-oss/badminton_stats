@@ -10,14 +10,32 @@ From the project root, run:
 uv run streamlit run src\badminton_stats\main.py
 ```
 
-The app opens in your browser. Its **Data folder** field defaults to
-`E:\Desktop\Badminton apps backup\Stats`; change it if your CSVs are stored
-somewhere else.
+The app opens in your browser. It loads CSV files from
+`E:\Desktop\Badminton apps backup\Stats`, configured in
+`src\badminton_stats\main.py`.
+
+Use the sidebar to navigate between **Game History & Matchups**, **Leaderboard**,
+**Win Rates over Time**, and **Partnership Win Rates over Time**. The current
+game history table is on the first page; the other three pages are scaffolded
+for the Power BI report migration.
 
 ## Game history data
 
-The app loads every CSV in the selected folder whose filename contains
+The app loads every CSV in the configured folder whose filename contains
 `game_history`, including timestamped `*_game_history.csv` exports and the
 `unioned_game_history_*.csv` file. The files must have the same columns. Their
-rows are combined into one dataset, and exact duplicate rows are removed
-before display.
+rows are combined into one dataset, and exact duplicate rows are removed.
+
+Before display, the game history is normalized into one row per team
+perspective: each match appears once for each team, with team and opponent
+columns, canonical team names, result, score differential, match key, and
+session fields. Rows with duplicate `DateTime` values are reduced to the first
+row before the two perspectives are created.
+
+The **Game History** page includes filters for game type, session, month, date
+range, team, and opponent. The Games Played summary counts distinct matches.
+**Remove Double Counting** shows only one team perspective for each match;
+clear all filters restores the full date range and selections. The **Win Rate
+by Sides** donut chart shows each side's share of wins for the filtered matches.
+The game table is paginated to keep rendering responsive; its reverse index
+continues across pages and reflects the current filters.
