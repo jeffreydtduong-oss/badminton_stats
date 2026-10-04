@@ -3,7 +3,7 @@ import streamlit as st
 
 
 TIME_PERIOD_KEY = "margin_over_time_period"
-GAME_TYPE_KEY = "margin_over_time_game_type"
+GAME_TYPES_KEY = "margin_over_time_game_types"
 DATA_POINTS_KEY = "margin_over_time_data_points"
 
 
@@ -20,13 +20,14 @@ with st.sidebar:
         ["By Session", "Month Year"],
         key=TIME_PERIOD_KEY,
     )
-    game_type = st.selectbox(
+    game_types = st.multiselect(
         "GameType",
         ["Doubles", "Singles"],
-        key=GAME_TYPE_KEY,
+        default=["Doubles"],
+        key=GAME_TYPES_KEY,
     )
 
-filtered_games = games[games["GameType"].eq(game_type)].drop_duplicates(
+filtered_games = games[games["GameType"].isin(game_types)].drop_duplicates(
     subset=["GameKey"]
 )
 if time_period == "By Session":
@@ -54,7 +55,7 @@ else:
     x_title = "Month Year"
 
 if not period_order:
-    st.info(f"No {game_type.lower()} games are available.")
+    st.info("No games are available for the selected game types.")
     st.stop()
 
 with st.sidebar:
