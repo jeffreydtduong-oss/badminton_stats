@@ -75,7 +75,9 @@ def append_new_game_history(
     worksheet = _open_worksheet(spreadsheet_id, credentials_info)
     values = worksheet.get_all_values()
     columns = games.columns.tolist()
-    if not values:
+    if not values or not any(
+        cell.strip() for row in values for cell in row
+    ):
         worksheet.update(
             values=[columns],
             range_name="A1",
@@ -85,7 +87,11 @@ def append_new_game_history(
         sheet_columns = columns
     else:
         sheet_columns = values[0]
-        if not sheet_columns or len(sheet_columns) != len(set(sheet_columns)):
+        if (
+            not sheet_columns
+            or any(not column for column in sheet_columns)
+            or len(sheet_columns) != len(set(sheet_columns))
+        ):
             raise ValueError(
                 f"The '{WORKSHEET_NAME}' worksheet must have unique, "
                 "non-empty column headers."

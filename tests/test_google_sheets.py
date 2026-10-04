@@ -75,6 +75,30 @@ class GoogleSheetsTests(unittest.TestCase):
         self.assertEqual(worksheet.update_option, "RAW")
         self.assertEqual(worksheet.append_option, "RAW")
 
+    def test_upload_initializes_a_blank_sheet_with_csv_headers(self) -> None:
+        worksheet = FakeWorksheet([[""]])
+        games = pd.DataFrame(
+            {
+                "DateTime": ["2026-01-01 10:00:00"],
+                "Team1Score": [21],
+            }
+        )
+
+        with patch(
+            "badminton_stats.google_sheets._open_worksheet",
+            return_value=worksheet,
+        ):
+            result = append_new_game_history("sheet", {}, games)
+
+        self.assertEqual(result, (1, 0))
+        self.assertEqual(
+            worksheet.values,
+            [
+                ["DateTime", "Team1Score"],
+                ["2026-01-01 10:00:00", "21"],
+            ],
+        )
+
     def test_upload_rejects_mismatched_sheet_headers(self) -> None:
         worksheet = FakeWorksheet([["DateTime", "Other"]])
         games = pd.DataFrame(
