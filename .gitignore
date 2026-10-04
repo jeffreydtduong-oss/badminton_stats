@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Local credentials and Streamlit secrets
+.streamlit/secrets.toml
+*.service-account.json

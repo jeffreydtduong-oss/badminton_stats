@@ -4,6 +4,9 @@ from typing import Optional
 import pandas as pd
 
 
+DEFAULT_DATA_DIRECTORY = Path(r"E:\Desktop\Badminton apps backup\Stats")
+
+
 def load_game_history(
     directory: Path,
 ) -> tuple[pd.DataFrame, list[Path], int]:

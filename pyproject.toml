@@ -8,12 +8,14 @@ authors = [
 ]
 requires-python = ">=3.9"
 dependencies = [
+    "gspread>=6.1.0",
     "pandas>=2.0.0",
     "streamlit>=1.50.0",
 ]
 
 [project.scripts]
 badminton-stats = "badminton_stats:main"
+upload-game-history = "badminton_stats.upload_game_history:main"
 
 [build-system]
 requires = ["uv_build>=0.12.22,<0.13.0"]
