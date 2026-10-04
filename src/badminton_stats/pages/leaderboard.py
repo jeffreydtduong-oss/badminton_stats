@@ -247,6 +247,7 @@ for game_type, title in (
     st.dataframe(
         stats,
         column_config={
+            "Player": st.column_config.TextColumn(pinned=True),
             "Win Rate": st.column_config.NumberColumn(format="percent"),
             "Wins Margin": st.column_config.NumberColumn(format="%.2f"),
             "Losses Margin": st.column_config.NumberColumn(format="%.2f"),

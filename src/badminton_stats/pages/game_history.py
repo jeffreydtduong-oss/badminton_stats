@@ -1,4 +1,5 @@
 import hashlib
+import html
 import math
 from typing import Optional
 
@@ -394,6 +395,7 @@ st.caption(
 overall_selection = st.dataframe(
     overall_stats,
     column_config={
+        "Player(s)": st.column_config.TextColumn(pinned=True),
         "Win Rate": st.column_config.NumberColumn(format="percent"),
         "Wins Margin": st.column_config.NumberColumn(format="%.2f"),
         "Losses Margin": st.column_config.NumberColumn(format="%.2f"),
@@ -440,6 +442,8 @@ st.subheader("Head to Head Stats")
 st.dataframe(
     head_to_head_stats,
     column_config={
+        "Player(s)": st.column_config.TextColumn(pinned=True),
+        "Opponent(s)": st.column_config.TextColumn(pinned=True),
         "H2H Win Rate": st.column_config.NumberColumn(format="percent"),
         "H2H Wins Margin": st.column_config.NumberColumn(format="%.2f"),
         "H2H Losses Margin": st.column_config.NumberColumn(format="%.2f"),
@@ -576,15 +580,25 @@ if table_view == "Table":
         height=min(700, 36 * (len(table) + 1) + 8),
     )
 else:
-    for game_number, row in table.iterrows():
+    for row_position, (game_number, row) in enumerate(table.iterrows()):
         with st.container(border=True):
             st.markdown(
                 f"**Game {game_number} · {row['Time Completed']}**"
             )
-            st.text(
-                f"{row['TeamCanonical']}  {row['Final Score']}  "
-                f"{row['OpponentCanonical']}"
-            )
+            team = html.escape(str(row["TeamCanonical"]))
+            opponent = html.escape(str(row["OpponentCanonical"]))
+            score = html.escape(str(row["Final Score"]))
+            if team_won[row_position]:
+                team = (
+                    '<span style="color:#1d4ed8;font-weight:600">'
+                    f"{team}</span>"
+                )
+            else:
+                opponent = (
+                    f'<span style="color:#1d4ed8;font-weight:600">'
+                    f"{opponent}</span>"
+                )
+            st.html(f"{team} &nbsp; {score} &nbsp; {opponent}")
             st.caption(
                 f"{row['GameType']} · {row['Winning Points']} winning points"
                 f" · {row['Duration']} · Margin {row['Margin']:.2f}"
