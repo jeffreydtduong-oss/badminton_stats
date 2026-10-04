@@ -97,17 +97,12 @@ def _format_duration(seconds: object) -> str:
 
 def _format_session_duration(seconds: int) -> str:
     hours, remaining_seconds = divmod(seconds, 3600)
-    minutes, remaining_seconds = divmod(remaining_seconds, 60)
+    minutes = remaining_seconds // 60
     parts = []
     if hours:
         parts.append(f"{hours} {'hour' if hours == 1 else 'hours'}")
-    if minutes:
-        parts.append(f"{minutes} {'minute' if minutes == 1 else 'minutes'}")
-    if remaining_seconds or not parts:
-        parts.append(
-            f"{remaining_seconds} "
-            f"{'second' if remaining_seconds == 1 else 'seconds'}"
-        )
+    if minutes or not hours:
+        parts.append(f"{minutes} {'min' if minutes == 1 else 'mins'}")
     return " ".join(parts)
 
 
