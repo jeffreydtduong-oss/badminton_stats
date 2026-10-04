@@ -40,6 +40,7 @@ page = st.navigation(
                 "pages/partnership_win_rates.py",
                 title="Partnership Win Rates over Time",
             ),
+            st.Page("pages/margin_over_time.py", title="Margin over Time"),
         ],
     }
 )

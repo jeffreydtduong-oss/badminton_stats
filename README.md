@@ -15,9 +15,9 @@ The app opens in your browser. It loads CSV files from
 `src\badminton_stats\main.py`.
 
 Use the sidebar to navigate between **Game History & Matchups**, **Leaderboard**,
-**Win Rates over Time**, and **Partnership Win Rates over Time**. The current
-game history table is on the first page; the other three pages are scaffolded
-for the Power BI report migration.
+**Win Rates over Time**, **Partnership Win Rates over Time**, and
+**Margin over Time**. The game history, leaderboard, and trends pages are
+available.
 
 ## Game history data
 
@@ -47,3 +47,20 @@ and point differential per player/team for the filtered games. Selecting a
 row filters the **Head to Head Stats** and game history tables to that player
 or team. The head-to-head table reports the filtered record against each
 opponent; clearing the selected row restores all players and matchups.
+
+The **Leaderboard** page has separate Doubles and Singles tables with shared
+player, session, month, and date filters. Doubles results count each player
+individually, including across different partner combinations. Both tables
+include win/loss, margin, point differential, and good-/bad-side win rates.
+
+The **Win Rates over Time** page plots individual players' win rates by month
+or session, with player, opponent, game type, and date filters. The
+**Partnership Win Rates over Time** page plots doubles-pair win rates by month
+or session, with pair, opponent, and date filters. Both trend charts show a
+percentage label at each point and use smooth lines. The opponent filters have
+an explicit **Exclude selected opponents** option; all other filters use
+**Select all** only to include every option.
+
+The **Margin over Time** page plots average game margin by session or month,
+with filters for game type and the number of most recent data points to show.
+It defaults to Doubles, By Session, and the latest 10 sessions.
