@@ -1,7 +1,5 @@
-#TO DO: donut chart still not updating numbers based on filters.. sometimes it works
-#TO DO: margin tooltip is too crowded, also doesn't show up on field name only the records in column
-#TO DO: add cross filter..
-
+import hashlib
+import math
 from typing import Optional
 
 import pandas as pd
@@ -21,10 +19,8 @@ DATE_RANGE_KEY = "game_history_date_range"
 REMOVE_DOUBLE_COUNTING_KEY = "game_history_remove_double_counting"
 TABLE_PAGE_KEY = "game_history_table_page"
 TABLE_PAGE_SIZE = 100
-MARGIN_HELP = (
-    "Margin of 0 indicates close games (e.g., 21-19, 15-13). "
-    "Margin of 1 indicates blowout scores (e.g., 21-0, 15-0)."
-)
+MARGIN_HELP = "0 = close game; 1 = blowout."
+OVERALL_STATS_TABLE_KEY_PREFIX = "game_history_overall_stats"
 
 
 def _unique_values(frame: pd.DataFrame, column: str) -> list[str]:
@@ -52,6 +48,7 @@ def _multiselect(
     key: str,
     default_all: bool = True,
     default_values: Optional[list[str]] = None,
+    placeholder: Optional[str] = None,
 ) -> list[str]:
     state_key = FILTER_KEYS[key]
     previous_key = f"{state_key}_select_all_active"
@@ -76,6 +73,7 @@ def _multiselect(
         format_func=lambda value: SELECT_ALL_LABEL if value == SELECT_ALL else value,
         on_change=_on_multiselect_change,
         args=(state_key,),
+        placeholder=placeholder,
     )
     st.session_state[previous_key] = SELECT_ALL in selected
 
@@ -91,7 +89,147 @@ def _format_duration(seconds: object) -> str:
     return f"{minutes} mins and {remaining_seconds} secs"
 
 
-st.title("Game History")
+def _format_session_duration(seconds: int) -> str:
+    hours, remaining_seconds = divmod(seconds, 3600)
+    minutes, remaining_seconds = divmod(remaining_seconds, 60)
+    parts = []
+    if hours:
+        parts.append(f"{hours} {'hour' if hours == 1 else 'hours'}")
+    if minutes:
+        parts.append(f"{minutes} {'minute' if minutes == 1 else 'minutes'}")
+    if remaining_seconds or not parts:
+        parts.append(
+            f"{remaining_seconds} "
+            f"{'second' if remaining_seconds == 1 else 'seconds'}"
+        )
+    return " ".join(parts)
+
+
+def _calculate_margin(frame: pd.DataFrame) -> pd.Series:
+    denominator = frame["WinningPoints"] - 2
+    return (
+        (frame["PointDifferential"].abs() - 2) / denominator
+    ).where(denominator.ne(0))
+
+
+def _donut_chart_html(good_side_wins: int, bad_side_wins: int) -> str:
+    total_wins = good_side_wins + bad_side_wins
+    good_side_rate = good_side_wins / total_wins
+    bad_side_rate = bad_side_wins / total_wins
+    label_radius = 69
+    good_mid_angle = -90 + 180 * good_side_rate
+    bad_mid_angle = -90 + 360 * good_side_rate + 180 * bad_side_rate
+
+    def percentage_label(rate: float, midpoint: float) -> str:
+        if rate < 0.12:
+            return ""
+        angle = math.radians(midpoint)
+        left = 85 + label_radius * math.cos(angle)
+        top = 85 + label_radius * math.sin(angle)
+        return (
+            f'<span style="position:absolute;left:{left:.1f}px;'
+            f'top:{top:.1f}px;transform:translate(-50%,-50%);'
+            'color:#000000;font-size:12px;font-weight:700;'
+            'text-shadow:0 1px 2px rgba(255,255,255,0.6);">'
+            f"{rate:.0%}</span>"
+        )
+
+    arc_labels = (
+        percentage_label(good_side_rate, good_mid_angle)
+        + percentage_label(bad_side_rate, bad_mid_angle)
+    )
+    return f"""
+        <div style="display:flex;align-items:center;justify-content:center;
+                    gap:1.25rem;flex-wrap:wrap;">
+          <div role="img"
+               aria-label="Good side wins {good_side_rate:.1%};
+                           Bad side wins {bad_side_rate:.1%}"
+               style="position:relative;width:170px;height:170px;
+                      border-radius:50%;
+                      background:
+                        radial-gradient(circle, #ffffff 0 54%, transparent 55%),
+                        conic-gradient(
+                          #2563eb 0 {good_side_rate:.4%},
+                          #f97316 {good_side_rate:.4%} 100%);
+                      display:grid;place-items:center;">
+            {arc_labels}
+          </div>
+          <div style="display:grid;gap:0.5rem;font-size:0.875rem;">
+            <div><span style="color:#2563eb">●</span>
+                 Good side wins: {good_side_wins} ({good_side_rate:.1%})</div>
+            <div><span style="color:#f97316">●</span>
+                 Bad side wins: {bad_side_wins} ({bad_side_rate:.1%})</div>
+          </div>
+        </div>
+    """
+
+
+def _aggregate_stats(
+    frame: pd.DataFrame, group_columns: list[str]
+) -> pd.DataFrame:
+    columns = [
+        *group_columns,
+        "Wins",
+        "Losses",
+        "Win Rate",
+        "Wins Margin",
+        "Losses Margin",
+        "Total Margin",
+        "Point +/- per game",
+    ]
+    if frame.empty:
+        return pd.DataFrame(
+            {
+                column: pd.Series(
+                    dtype=(
+                        "string"
+                        if column in group_columns
+                        else "int64"
+                        if column in {"Wins", "Losses"}
+                        else "float64"
+                    )
+                )
+                for column in columns
+            }
+        )
+
+    games_with_margin = frame.assign(Margin=_calculate_margin(frame))
+    grouped = games_with_margin.groupby(
+        group_columns,
+        dropna=False,
+        sort=True,
+    )
+    stats = grouped.agg(
+        TotalGames=("DateTime", "size"),
+        **{
+            "Total Margin": ("Margin", "mean"),
+            "Point +/- per game": ("PointDifferential", "mean"),
+        },
+    )
+    for result, count_column, margin_column in (
+        ("Won", "Wins", "Wins Margin"),
+        ("Lost", "Losses", "Losses Margin"),
+    ):
+        result_stats = (
+            games_with_margin[games_with_margin["Result"].eq(result)]
+            .groupby(group_columns, dropna=False, sort=True)
+            .agg(
+                **{
+                    count_column: ("Result", "size"),
+                    margin_column: ("Margin", "mean"),
+                }
+            )
+        )
+        stats = stats.join(result_stats)
+
+    stats[["Wins", "Losses"]] = stats[["Wins", "Losses"]].fillna(0).astype(
+        "int64"
+    )
+    stats["Win Rate"] = stats["Wins"] / stats["TotalGames"]
+    return stats.reset_index().drop(columns="TotalGames")[columns]
+
+
+st.title("Game History & Matchups")
 
 games = st.session_state["games"].copy()
 if games.empty:
@@ -106,6 +244,9 @@ available_game_types = _unique_values(games, "GameType")
 available_sessions = sorted(_unique_values(games, "Session Key"), reverse=True)
 min_date = games["DateTime"].min().date()
 max_date = games["DateTime"].max().date()
+remove_double_counting = st.session_state.get(
+    REMOVE_DOUBLE_COUNTING_KEY, False
+)
 
 with st.sidebar:
     if st.button("Clear all filters", use_container_width=True):
@@ -115,11 +256,6 @@ with st.sidebar:
         st.session_state[DATE_RANGE_KEY] = (min_date, max_date)
         st.session_state[REMOVE_DOUBLE_COUNTING_KEY] = False
         st.session_state[TABLE_PAGE_KEY] = 1
-
-    remove_double_counting = st.checkbox(
-        "Remove Double Counting",
-        key=REMOVE_DOUBLE_COUNTING_KEY,
-    )
 
     selected_game_types = _multiselect(
         "GameType",
@@ -164,6 +300,7 @@ with st.sidebar:
         "Player(s)",
         _unique_values(player_context, "TeamCanonical"),
         "players",
+        placeholder="Search players...",
     )
     opponent_context = player_context[
         player_context["TeamCanonical"].isin(selected_players)
@@ -172,6 +309,11 @@ with st.sidebar:
         "Opponent(s)",
         _unique_values(opponent_context, "OpponentCanonical"),
         "opponents",
+        placeholder="Search opponents...",
+    )
+    remove_double_counting = st.checkbox(
+        "Remove Double Counting",
+        key=REMOVE_DOUBLE_COUNTING_KEY,
     )
 
 filtered = games[
@@ -189,107 +331,140 @@ if selected_opponents:
 if remove_double_counting:
     filtered = filtered[filtered["IsIndexEven"].eq(0)]
 
-st.metric("Games Played", f"{filtered['DateTime'].nunique():,}")
+games_played_column, session_duration_column = st.columns(2)
+with games_played_column:
+    st.metric("Games Played", f"{filtered['DateTime'].nunique():,}")
 
-unique_games = filtered[filtered["IsIndexEven"].eq(0)]
-good_side_wins = int(
-    unique_games["TeamCanonical"].eq(unique_games["Winner Canonical"]).sum()
-)
-bad_side_wins = int(
-    unique_games["OpponentCanonical"].eq(unique_games["Winner Canonical"]).sum()
-)
-total_side_wins = good_side_wins + bad_side_wins
+session_selection = st.session_state[FILTER_KEYS["sessions"]]
+session_duration = ""
+if len(session_selection) == 1 and session_selection[0] != SELECT_ALL:
+    session_games = games[
+        games["Session Key"].eq(session_selection[0])
+    ].sort_values("DateTime", kind="stable")
+    if not session_games.empty:
+        first_game = session_games.iloc[0]
+        if pd.notna(first_game["GameDurationSeconds"]):
+            session_seconds = int(
+                (
+                    session_games["DateTime"].iloc[-1]
+                    - first_game["DateTime"]
+                ).total_seconds()
+                + first_game["GameDurationSeconds"]
+            )
+            session_duration = _format_session_duration(session_seconds)
+with session_duration_column:
+    st.metric("Session Duration", session_duration)
 
-st.subheader("Win Rate by Sides")
-if total_side_wins:
-    chart_data = pd.DataFrame(
-        {
-            "Side": ["Good side wins", "Bad side wins"],
-            "Wins": [good_side_wins, bad_side_wins],
-            "Win rate": [
-                good_side_wins / total_side_wins,
-                bad_side_wins / total_side_wins,
-            ],
-        }
+overall_stats = _aggregate_stats(filtered, ["TeamCanonical"]).rename(
+    columns={"TeamCanonical": "Player(s)"}
+)
+overall_stats["_Games Played"] = overall_stats["Player(s)"].map(
+    filtered["TeamCanonical"].value_counts()
+)
+overall_stats = overall_stats.sort_values(
+    "_Games Played",
+    ascending=False,
+    kind="stable",
+).drop(columns="_Games Played")
+filter_signature = repr(
+    (
+        tuple(selected_game_types),
+        tuple(selected_sessions),
+        tuple(selected_months),
+        tuple(selected_players),
+        tuple(selected_opponents),
+        selected_date_range,
+        remove_double_counting,
     )
-    donut_chart = {
-        "width": 190,
-        "height": 170,
-        "layer": [
-            {
-                "mark": {"type": "arc", "innerRadius": 42, "outerRadius": 68},
-                "encoding": {
-                    "theta": {
-                        "field": "Wins",
-                        "type": "quantitative",
-                        "stack": "normalize",
-                    },
-                    "order": {
-                        "field": "Side",
-                        "sort": ["Good side wins", "Bad side wins"],
-                    },
-                    "color": {
-                        "field": "Side",
-                        "type": "nominal",
-                        "scale": {
-                            "domain": ["Good side wins", "Bad side wins"],
-                            "range": ["#2563eb", "#f97316"],
-                        },
-                        "legend": {
-                            "title": None,
-                            "orient": "bottom",
-                            "direction": "horizontal",
-                        },
-                    },
-                    "tooltip": [
-                        {"field": "Side", "type": "nominal"},
-                        {"field": "Wins", "type": "quantitative"},
-                        {
-                            "field": "Win rate",
-                            "type": "quantitative",
-                            "format": ".1%",
-                        },
-                    ],
-                },
-            },
-            {
-                "mark": {
-                    "type": "text",
-                    "radius": 54,
-                    "fontSize": 11,
-                    "fontWeight": "bold",
-                },
-                "encoding": {
-                    "theta": {
-                        "field": "Wins",
-                        "type": "quantitative",
-                        "stack": "normalize",
-                    },
-                    "order": {
-                        "field": "Side",
-                        "sort": ["Good side wins", "Bad side wins"],
-                    },
-                    "text": {
-                        "field": "Win rate",
-                        "type": "quantitative",
-                        "format": ".1%",
-                    },
-                },
-            },
-        ],
-        "view": {"stroke": None},
-    }
-    chart_column = st.columns([1, 2, 1])[1]
-    with chart_column:
-        st.vega_lite_chart(
-            chart_data,
-            spec=donut_chart,
-            key="win_rate_by_sides",
-            width=250,
-            height=210,
-        )
+)
+overall_stats_key = (
+    f"{OVERALL_STATS_TABLE_KEY_PREFIX}_"
+    f"{hashlib.sha256(filter_signature.encode()).hexdigest()[:12]}"
+)
+
+st.subheader("Overall Stats")
+st.caption(
+    "Select a row to quickly cross filter Head to Head Stats and Game History"
+)
+overall_selection = st.dataframe(
+    overall_stats,
+    column_config={
+        "Win Rate": st.column_config.NumberColumn(format="percent"),
+        "Wins Margin": st.column_config.NumberColumn(format="%.2f"),
+        "Losses Margin": st.column_config.NumberColumn(format="%.2f"),
+        "Total Margin": st.column_config.NumberColumn(format="%.2f"),
+        "Point +/- per game": st.column_config.NumberColumn(format="%.1f"),
+    },
+    hide_index=True,
+    on_select="rerun",
+    selection_mode="single-row",
+    key=overall_stats_key,
+)
+if isinstance(overall_selection, dict):
+    selected_rows = overall_selection.get("selection", {}).get("rows", [])
 else:
-    st.info("No wins are available for the selected filters.")
+    selected_rows = overall_selection.selection.rows
+selected_player = (
+    str(overall_stats.iloc[selected_rows[0]]["Player(s)"])
+    if selected_rows and 0 <= selected_rows[0] < len(overall_stats)
+    else None
+)
+
+head_to_head_games = filtered
+if selected_player is not None:
+    head_to_head_games = head_to_head_games[
+        head_to_head_games["TeamCanonical"].eq(selected_player)
+    ]
+head_to_head_stats = _aggregate_stats(
+    head_to_head_games,
+    ["TeamCanonical", "OpponentCanonical"],
+).rename(
+    columns={
+        "TeamCanonical": "Player(s)",
+        "OpponentCanonical": "Opponent(s)",
+        "Wins": "H2H Wins",
+        "Losses": "H2H Losses",
+        "Win Rate": "H2H Win Rate",
+        "Wins Margin": "H2H Wins Margin",
+        "Losses Margin": "H2H Losses Margin",
+        "Total Margin": "H2H Total Margin",
+    }
+)
+
+st.subheader("Head to Head Stats")
+st.dataframe(
+    head_to_head_stats,
+    column_config={
+        "H2H Win Rate": st.column_config.NumberColumn(format="percent"),
+        "H2H Wins Margin": st.column_config.NumberColumn(format="%.2f"),
+        "H2H Losses Margin": st.column_config.NumberColumn(format="%.2f"),
+        "H2H Total Margin": st.column_config.NumberColumn(format="%.2f"),
+        "Point +/- per game": st.column_config.NumberColumn(format="%.1f"),
+    },
+    hide_index=True,
+    width="stretch",
+)
+
+if selected_player is not None:
+    filtered = filtered[filtered["TeamCanonical"].eq(selected_player)]
+
+player_filter_active = (
+    selected_player is not None
+    or SELECT_ALL not in st.session_state[FILTER_KEYS["players"]]
+)
+if player_filter_active:
+    player_wins = filtered[filtered["Result"].eq("Won")]
+    good_side_wins = int(player_wins["IsIndexEven"].eq(0).sum())
+    bad_side_wins = int(player_wins["IsIndexEven"].eq(1).sum())
+else:
+    unique_games = filtered[filtered["IsIndexEven"].eq(0)]
+    good_side_wins = int(
+        unique_games["TeamCanonical"].eq(unique_games["Winner Canonical"]).sum()
+    )
+    bad_side_wins = int(
+        unique_games["OpponentCanonical"].eq(unique_games["Winner Canonical"]).sum()
+    )
+total_side_wins = good_side_wins + bad_side_wins
 
 filtered = filtered.sort_values(
     "DateTime",
@@ -346,7 +521,7 @@ table.index = pd.RangeIndex(
     len(filtered) - page_start - len(table),
     -1,
 )
-table = table.rename(columns={"Margin": "Margin ⓘ"})
+table.index.name = "Game Number"
 
 winning_style = (
     "background-color: #dbeafe; color: #1d4ed8; font-weight: 600"
@@ -359,16 +534,36 @@ cell_styles.loc[~team_won, "OpponentCanonical"] = winning_style
 
 styled_table = (
     table.style.apply(lambda _: cell_styles, axis=None)
-    .format({"Margin ⓘ": "{:.2f}"})
+    .format({"Margin": "{:.2f}"})
     .set_properties(**{"text-align": "center"})
     .set_table_styles(
         [{"selector": "th", "props": [("text-align", "center")]}]
     )
-    .set_tooltips(
-        pd.DataFrame("", index=table.index, columns=table.columns).assign(
-            **{"Margin ⓘ": [MARGIN_HELP] * len(table)}
-        )
-    )
 )
 
-st.table(styled_table)
+st.subheader("Game History")
+st.dataframe(
+    styled_table,
+    column_config={
+        "Margin": st.column_config.NumberColumn(
+            help=MARGIN_HELP,
+            format="%.2f",
+        )
+    },
+    hide_index=False,
+    width="stretch",
+    height=min(700, 36 * (len(table) + 1) + 8),
+)
+
+st.subheader("Win Rate by Sides")
+if total_side_wins:
+    chart_column = st.columns([1, 2, 1])[1]
+    with chart_column:
+        st.html(
+            _donut_chart_html(
+                good_side_wins,
+                bad_side_wins,
+            )
+        )
+else:
+    st.info("No wins are available for the selected filters.")

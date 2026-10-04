@@ -37,5 +37,13 @@ range, team, and opponent. The Games Played summary counts distinct matches.
 **Remove Double Counting** shows only one team perspective for each match;
 clear all filters restores the full date range and selections. The **Win Rate
 by Sides** donut chart shows each side's share of wins for the filtered matches.
-The game table is paginated to keep rendering responsive; its reverse index
-continues across pages and reflects the current filters.
+The Session Duration card shows the elapsed time for a session only when one
+session is explicitly selected. The game table is paginated to keep rendering
+responsive; its reverse **Game Number** index continues across pages and
+reflects the current filters.
+
+The **Overall Stats** table summarizes wins, losses, win rate, average margin,
+and point differential per player/team for the filtered games. Selecting a
+row filters the **Head to Head Stats** and game history tables to that player
+or team. The head-to-head table reports the filtered record against each
+opponent; clearing the selected row restores all players and matchups.
