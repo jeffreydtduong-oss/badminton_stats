@@ -19,12 +19,17 @@ DATE_RANGE_KEY = "game_history_date_range"
 REMOVE_DOUBLE_COUNTING_KEY = "game_history_remove_double_counting"
 TABLE_PAGE_KEY = "game_history_table_page"
 TABLE_PAGE_SIZE = 100
+TABLE_VIEW_KEY = "game_history_table_view"
 MARGIN_HELP = "0 = close game; 1 = blowout."
 OVERALL_STATS_TABLE_KEY_PREFIX = "game_history_overall_stats"
 
 
 def _unique_values(frame: pd.DataFrame, column: str) -> list[str]:
     return sorted(frame[column].dropna().astype(str).unique().tolist())
+
+
+def _change_table_page(delta: int) -> None:
+    st.session_state[TABLE_PAGE_KEY] += delta
 
 
 def _on_multiselect_change(key: str) -> None:
@@ -482,20 +487,35 @@ page_number = st.session_state[TABLE_PAGE_KEY]
 page_start = (page_number - 1) * TABLE_PAGE_SIZE
 page_games = filtered.iloc[page_start : page_start + TABLE_PAGE_SIZE]
 
+table_view = st.radio(
+    "Game History display",
+    ["Table", "Compact cards"],
+    horizontal=True,
+    key=TABLE_VIEW_KEY,
+)
 previous_column, page_column, next_column = st.columns([1, 2, 1])
 with previous_column:
-    if st.button("Previous", disabled=page_number <= 1):
-        st.session_state[TABLE_PAGE_KEY] = page_number - 1
-        st.rerun()
+    st.button(
+        "Previous",
+        disabled=page_number <= 1,
+        on_click=_change_table_page,
+        args=(-1,),
+    )
 with page_column:
-    st.markdown(
-        f"<div style='text-align: center'>Page {page_number} of {total_pages}</div>",
-        unsafe_allow_html=True,
+    st.number_input(
+        f"Page {page_number} of {total_pages}",
+        min_value=1,
+        max_value=total_pages,
+        step=1,
+        key=TABLE_PAGE_KEY,
     )
 with next_column:
-    if st.button("Next", disabled=page_number >= total_pages):
-        st.session_state[TABLE_PAGE_KEY] = page_number + 1
-        st.rerun()
+    st.button(
+        "Next",
+        disabled=page_number >= total_pages,
+        on_click=_change_table_page,
+        args=(1,),
+    )
 
 duration = page_games["GameDurationSeconds"].map(_format_duration)
 denominator = page_games["WinningPoints"] - 2
@@ -542,18 +562,33 @@ styled_table = (
 )
 
 st.subheader("Game History")
-st.dataframe(
-    styled_table,
-    column_config={
-        "Margin": st.column_config.NumberColumn(
-            help=MARGIN_HELP,
-            format="%.2f",
-        )
-    },
-    hide_index=False,
-    width="stretch",
-    height=min(700, 36 * (len(table) + 1) + 8),
-)
+if table_view == "Table":
+    st.dataframe(
+        styled_table,
+        column_config={
+            "Margin": st.column_config.NumberColumn(
+                help=MARGIN_HELP,
+                format="%.2f",
+            )
+        },
+        hide_index=False,
+        width="stretch",
+        height=min(700, 36 * (len(table) + 1) + 8),
+    )
+else:
+    for game_number, row in table.iterrows():
+        with st.container(border=True):
+            st.markdown(
+                f"**Game {game_number} · {row['Time Completed']}**"
+            )
+            st.text(
+                f"{row['TeamCanonical']}  {row['Final Score']}  "
+                f"{row['OpponentCanonical']}"
+            )
+            st.caption(
+                f"{row['GameType']} · {row['Winning Points']} winning points"
+                f" · {row['Duration']} · Margin {row['Margin']:.2f}"
+            )
 
 st.subheader("Win Rate by Sides")
 if total_side_wins:
