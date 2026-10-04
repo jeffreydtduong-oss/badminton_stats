@@ -85,8 +85,34 @@ class GoogleSheetsTests(unittest.TestCase):
             "badminton_stats.google_sheets._open_worksheet",
             return_value=worksheet,
         ):
-            with self.assertRaisesRegex(ValueError, "header does not match"):
+            with self.assertRaisesRegex(ValueError, "missing CSV columns"):
                 append_new_game_history("sheet", {}, games)
+
+    def test_upload_maps_reordered_headers_and_preserves_extra_columns(self) -> None:
+        worksheet = FakeWorksheet(
+            [
+                ["Team1Score", "DateTime", "Source File Name"],
+                ["19", "2026-01-01 10:00:00", "older.csv"],
+            ]
+        )
+        games = pd.DataFrame(
+            {
+                "DateTime": ["2026-01-02 10:00:00"],
+                "Team1Score": [21],
+            }
+        )
+
+        with patch(
+            "badminton_stats.google_sheets._open_worksheet",
+            return_value=worksheet,
+        ):
+            added = append_new_game_history("sheet", {}, games)
+
+        self.assertEqual(added, (1, 0))
+        self.assertEqual(
+            worksheet.values[-1],
+            ["21", "2026-01-02 10:00:00", ""],
+        )
 
     def test_sheet_loader_converts_empty_cells_to_missing_values(self) -> None:
         worksheet = FakeWorksheet(

@@ -82,17 +82,26 @@ def append_new_game_history(
             value_input_option="RAW",
         )
         existing_keys: set[str] = set()
+        sheet_columns = columns
     else:
-        if values[0] != columns:
+        sheet_columns = values[0]
+        if not sheet_columns or len(sheet_columns) != len(set(sheet_columns)):
             raise ValueError(
-                f"The '{WORKSHEET_NAME}' worksheet header does not match "
-                "the CSV columns. Keep the same columns and column order."
+                f"The '{WORKSHEET_NAME}' worksheet must have unique, "
+                "non-empty column headers."
             )
-        if "DateTime" not in values[0]:
+        if "DateTime" not in sheet_columns:
             raise ValueError(
                 f"The '{WORKSHEET_NAME}' worksheet must include DateTime."
             )
-        date_time_index = values[0].index("DateTime")
+        missing_columns = [column for column in columns if column not in sheet_columns]
+        if missing_columns:
+            raise ValueError(
+                f"The '{WORKSHEET_NAME}' worksheet is missing CSV columns: "
+                f"{missing_columns}. Add these columns to the sheet header "
+                "before uploading."
+            )
+        date_time_index = sheet_columns.index("DateTime")
         existing_values = [
             row[date_time_index]
             for row in values[1:]
@@ -104,6 +113,7 @@ def append_new_game_history(
         ~incoming["_DateTimeKey"].isin(existing_keys), columns
     ]
     if not new_games.empty:
+        new_games = new_games.reindex(columns=sheet_columns)
         rows = [
             ["" if pd.isna(value) else str(value) for value in row]
             for row in new_games.itertuples(index=False, name=None)
