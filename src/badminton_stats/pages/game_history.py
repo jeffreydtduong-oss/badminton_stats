@@ -523,9 +523,7 @@ margin = (
 ).where(denominator.ne(0))
 table = pd.DataFrame(
     {
-        "Time Completed": page_games["DateTime"].dt.strftime(
-            "%b %d, %Y %I:%M %p"
-        ),
+        "Time Completed": page_games["DateTime"],
         "GameType": page_games["GameType"],
         "Winning Points": page_games["WinningPoints"],
         "TeamCanonical": page_games["TeamCanonical"],
@@ -565,6 +563,9 @@ if table_view == "Table":
     st.dataframe(
         styled_table,
         column_config={
+            "Time Completed": st.column_config.DatetimeColumn(
+                format="MMM DD, YYYY hh:mm A",
+            ),
             "Margin": st.column_config.NumberColumn(
                 help=MARGIN_HELP,
                 format="%.2f",
@@ -577,9 +578,10 @@ if table_view == "Table":
 else:
     for row_position, (game_number, row) in enumerate(table.iterrows()):
         with st.container(border=True):
-            st.markdown(
-                f"**Game {game_number} · {row['Time Completed']}**"
+            completed_at = row["Time Completed"].strftime(
+                "%b %d, %Y %I:%M %p"
             )
+            st.markdown(f"**Game {game_number} · {completed_at}**")
             team = html.escape(str(row["TeamCanonical"]))
             opponent = html.escape(str(row["OpponentCanonical"]))
             score = html.escape(str(row["Final Score"]))
