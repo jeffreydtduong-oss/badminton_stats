@@ -6,6 +6,14 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
+from badminton_stats.filter_state import (
+    SHARED_FILTER_KEYS,
+    prepare_date_range_state,
+    prepare_multiselect_state,
+    sync_date_range_state,
+    sync_multiselect_state,
+)
+
 
 SELECT_ALL = "__select_all__"
 SELECT_ALL_LABEL = "Select all"
@@ -33,9 +41,22 @@ def _change_table_page(delta: int) -> None:
     st.session_state[TABLE_PAGE_KEY] += delta
 
 
-def _on_multiselect_change(key: str) -> None:
-    previous_key = f"{key}_select_all_active"
-    choices = st.session_state[key]
+def _on_multiselect_change(
+    widget_key: str,
+    shared_key: Optional[str] = None,
+    options: Optional[list[str]] = None,
+) -> None:
+    if shared_key is not None and options is not None:
+        sync_multiselect_state(
+            widget_key,
+            shared_key,
+            options,
+            SELECT_ALL,
+        )
+        return
+
+    previous_key = f"{widget_key}_select_all_active"
+    choices = st.session_state[widget_key]
     had_select_all = st.session_state.get(previous_key, False)
 
     if SELECT_ALL in choices and len(choices) > 1:
@@ -43,7 +64,7 @@ def _on_multiselect_change(key: str) -> None:
             choices = [choice for choice in choices if choice != SELECT_ALL]
         else:
             choices = [SELECT_ALL]
-        st.session_state[key] = choices
+        st.session_state[widget_key] = choices
 
     st.session_state[previous_key] = SELECT_ALL in choices
 
@@ -59,18 +80,27 @@ def _multiselect(
     state_key = FILTER_KEYS[key]
     previous_key = f"{state_key}_select_all_active"
     valid_options = set(options)
+    shared_key = SHARED_FILTER_KEYS.get(key)
 
-    if state_key not in st.session_state:
-        if default_all:
-            st.session_state[state_key] = [SELECT_ALL]
-        else:
-            st.session_state[state_key] = default_values or []
+    if shared_key is not None:
+        prepare_multiselect_state(
+            state_key,
+            shared_key,
+            options,
+            SELECT_ALL,
+            None if default_all else (default_values or []),
+        )
+    elif state_key not in st.session_state:
+        st.session_state[state_key] = (
+            [SELECT_ALL] if default_all else default_values or []
+        )
         st.session_state[previous_key] = default_all
     else:
         current = st.session_state[state_key]
         if SELECT_ALL not in current:
-            current = [value for value in current if value in valid_options]
-            st.session_state[state_key] = current
+            st.session_state[state_key] = [
+                value for value in current if value in valid_options
+            ]
 
     selected = st.multiselect(
         label,
@@ -78,7 +108,7 @@ def _multiselect(
         key=state_key,
         format_func=lambda value: SELECT_ALL_LABEL if value == SELECT_ALL else value,
         on_change=_on_multiselect_change,
-        args=(state_key,),
+        args=(state_key, shared_key, options),
         placeholder=placeholder,
     )
     st.session_state[previous_key] = SELECT_ALL in selected
@@ -254,7 +284,12 @@ with st.sidebar:
         for state_key in FILTER_KEYS.values():
             st.session_state[state_key] = [SELECT_ALL]
             st.session_state[f"{state_key}_select_all_active"] = True
-        st.session_state[DATE_RANGE_KEY] = (min_date, max_date)
+        st.session_state[SHARED_FILTER_KEYS["sessions"]] = None
+        st.session_state[SHARED_FILTER_KEYS["months"]] = None
+        st.session_state[SHARED_FILTER_KEYS["date_range"]] = (
+            min_date,
+            max_date,
+        )
         st.session_state[REMOVE_DOUBLE_COUNTING_KEY] = False
         st.session_state[TABLE_PAGE_KEY] = 1
 
@@ -275,6 +310,13 @@ with st.sidebar:
         available_months,
         "months",
     )
+    prepare_date_range_state(
+        DATE_RANGE_KEY,
+        SHARED_FILTER_KEYS["date_range"],
+        (min_date, max_date),
+        min_date,
+        max_date,
+    )
     selected_date_range = st.date_input(
         "DateTime",
         value=(min_date, max_date),
@@ -282,6 +324,8 @@ with st.sidebar:
         max_value=max_date,
         format="YYYY-MM-DD",
         key=DATE_RANGE_KEY,
+        on_change=sync_date_range_state,
+        args=(DATE_RANGE_KEY, SHARED_FILTER_KEYS["date_range"]),
     )
 
     player_context = games[
