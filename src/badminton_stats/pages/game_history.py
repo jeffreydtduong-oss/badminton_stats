@@ -524,7 +524,7 @@ margin = (
 table = pd.DataFrame(
     {
         "Time Completed": page_games["DateTime"].dt.strftime(
-            "%a, %d %b %Y %I:%M:%S %p"
+            "%b %d, %Y %I:%M %p"
         ),
         "GameType": page_games["GameType"],
         "Winning Points": page_games["WinningPoints"],
