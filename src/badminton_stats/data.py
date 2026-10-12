@@ -270,7 +270,9 @@ def normalize_game_history(games: pd.DataFrame) -> pd.DataFrame:
         for game_type, winner, timestamp in session_games[
             ["GameType", "Winner Canonical", "Timestamp"]
         ].itertuples(index=False, name=None):
-            if game_type != "Doubles" or pd.isna(winner):
+            if game_type != "Doubles":
+                continue
+            if pd.isna(winner):
                 streak_team = None
                 streak_length = 0
                 continue

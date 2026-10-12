@@ -77,17 +77,22 @@ class DynastyTests(unittest.TestCase):
 
         self.assertFalse(games["IsDynasty"].any())
 
-    def test_singles_game_breaks_a_doubles_streak(self) -> None:
+    def test_singles_game_does_not_break_a_doubles_streak(self) -> None:
         games = _normalized_games(
             [
                 ("2026-01-01 10:00:00", "Doubles", "Team1"),
-                ("2026-01-01 10:30:00", "Doubles", "Team1"),
-                ("2026-01-01 11:00:00", "Singles", "Team1"),
+                ("2026-01-01 10:30:00", "Singles", "Team1"),
+                ("2026-01-01 11:00:00", "Doubles", "Team1"),
                 ("2026-01-01 11:30:00", "Doubles", "Team1"),
             ]
         )
 
-        self.assertFalse(games["IsDynasty"].any())
+        dynasty_rows = games[games["IsDynasty"]]
+        self.assertEqual(len(dynasty_rows), 1)
+        self.assertEqual(
+            dynasty_rows.iloc[0]["DateTime"],
+            pd.Timestamp("2026-01-01 11:30:00"),
+        )
 
 
 if __name__ == "__main__":
