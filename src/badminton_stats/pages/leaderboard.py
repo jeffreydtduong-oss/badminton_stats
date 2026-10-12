@@ -120,20 +120,29 @@ def _player_rows(games: pd.DataFrame, game_type: str) -> pd.DataFrame:
     )
 
 
-def _leaderboard_stats(games: pd.DataFrame) -> pd.DataFrame:
+def _leaderboard_stats(
+    games: pd.DataFrame,
+    *,
+    include_dynasties: bool,
+) -> pd.DataFrame:
     columns = [
         "Player",
         "Wins",
         "Losses",
-        "# of Dynasties",
-        "Win Rate",
-        "Wins Margin",
-        "Losses Margin",
-        "Total Margin",
-        "Point +/- per game",
-        "Win % on Good Side",
-        "Win % on Bad Side",
     ]
+    if include_dynasties:
+        columns.append("# of Dynasties")
+    columns.extend(
+        [
+            "Win Rate",
+            "Wins Margin",
+            "Losses Margin",
+            "Total Margin",
+            "Point +/- per game",
+            "Win % on Good Side",
+            "Win % on Bad Side",
+        ]
+    )
     if games.empty:
         return pd.DataFrame(
             {
@@ -162,20 +171,28 @@ def _leaderboard_stats(games: pd.DataFrame) -> pd.DataFrame:
     games["GoodSideWin"] = games["IsWin"] & games["GoodSideGame"]
     games["BadSideWin"] = games["IsWin"] & games["BadSideGame"]
 
+    aggregations = {
+        "Wins": ("IsWin", "sum"),
+        "Losses": ("IsWin", lambda wins: (~wins).sum()),
+    }
+    if include_dynasties:
+        aggregations["# of Dynasties"] = ("IsDynasty", "sum")
+    aggregations.update(
+        {
+            "WinRate": ("IsWin", "mean"),
+            "WinsMargin": ("WinMargin", "mean"),
+            "LossesMargin": ("LossMargin", "mean"),
+            "TotalMargin": ("Margin", "mean"),
+            "PointDifference": ("PointDifferential", "mean"),
+            "GamesPlayed": ("GameKey", "size"),
+            "GoodSideGames": ("GoodSideGame", "sum"),
+            "GoodSideWins": ("GoodSideWin", "sum"),
+            "BadSideGames": ("BadSideGame", "sum"),
+            "BadSideWins": ("BadSideWin", "sum"),
+        }
+    )
     stats = games.groupby("Player", sort=True).agg(
-        Wins=("IsWin", "sum"),
-        Losses=("IsWin", lambda wins: (~wins).sum()),
-        WinRate=("IsWin", "mean"),
-        **{"# of Dynasties": ("IsDynasty", "sum")},
-        WinsMargin=("WinMargin", "mean"),
-        LossesMargin=("LossMargin", "mean"),
-        TotalMargin=("Margin", "mean"),
-        PointDifference=("PointDifferential", "mean"),
-        GamesPlayed=("GameKey", "size"),
-        GoodSideGames=("GoodSideGame", "sum"),
-        GoodSideWins=("GoodSideWin", "sum"),
-        BadSideGames=("BadSideGame", "sum"),
-        BadSideWins=("BadSideWin", "sum"),
+        **aggregations,
     )
     stats["Win % on Good Side"] = (
         stats["GoodSideWins"] / stats["Wins"]
@@ -294,7 +311,10 @@ for game_type, title in (
     if selected_players:
         player_games = player_games[player_games["Player"].isin(selected_players)]
 
-    stats = _leaderboard_stats(player_games)
+    stats = _leaderboard_stats(
+        player_games,
+        include_dynasties=game_type == "Doubles",
+    )
     st.subheader(title)
     st.dataframe(
         stats,
