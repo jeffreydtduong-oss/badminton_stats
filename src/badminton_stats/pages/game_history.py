@@ -211,7 +211,7 @@ def _aggregate_stats(
         "Point +/- per game",
     ]
     if include_dynasties:
-        columns.insert(len(group_columns) + 2, "# of Dynasties")
+        columns.insert(len(group_columns) + 2, "Dynasties")
     if frame.empty:
         return pd.DataFrame(
             {
@@ -220,7 +220,7 @@ def _aggregate_stats(
                         "string"
                         if column in group_columns
                         else "int64"
-                        if column in {"Wins", "Losses", "# of Dynasties"}
+                        if column in {"Wins", "Losses", "Dynasties"}
                         else "float64"
                     )
                 )
@@ -236,7 +236,7 @@ def _aggregate_stats(
     )
     stats = grouped.agg(
         TotalGames=("DateTime", "size"),
-        **{"# of Dynasties": ("IsDynasty", "sum")},
+        **{"Dynasties": ("IsDynasty", "sum")},
         **{
             "Total Margin": ("Margin", "mean"),
             "Point +/- per game": ("PointDifferential", "mean"),
@@ -262,7 +262,7 @@ def _aggregate_stats(
         "int64"
     )
     if include_dynasties:
-        stats["# of Dynasties"] = grouped["IsDynasty"].sum()
+        stats["Dynasties"] = grouped["IsDynasty"].sum()
     stats["Win Rate"] = stats["Wins"] / stats["TotalGames"]
     return stats.reset_index().drop(columns="TotalGames")[columns]
 
@@ -414,7 +414,7 @@ overall_stats = _aggregate_stats(
     include_dynasties=True,
 ).rename(columns={"TeamCanonical": "Player(s)"})
 dynasty_counts = dynasty_rows.groupby("TeamCanonical")["IsDynasty"].sum()
-overall_stats["# of Dynasties"] = (
+overall_stats["Dynasties"] = (
     overall_stats["Player(s)"].map(dynasty_counts).fillna(0).astype("int64")
 )
 overall_stats["_Games Played"] = overall_stats["Player(s)"].map(

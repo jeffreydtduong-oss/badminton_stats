@@ -131,7 +131,7 @@ def _leaderboard_stats(
         "Losses",
     ]
     if include_dynasties:
-        columns.append("# of Dynasties")
+        columns.append("Dynasties")
     columns.extend(
         [
             "Win Rate",
@@ -151,7 +151,7 @@ def _leaderboard_stats(
                         "string"
                         if column == "Player"
                         else "int64"
-                        if column in {"Wins", "Losses", "# of Dynasties"}
+                        if column in {"Wins", "Losses", "Dynasties"}
                         else "float64"
                     )
                 )
@@ -176,7 +176,7 @@ def _leaderboard_stats(
         "Losses": ("IsWin", lambda wins: (~wins).sum()),
     }
     if include_dynasties:
-        aggregations["# of Dynasties"] = ("IsDynasty", "sum")
+        aggregations["Dynasties"] = ("IsDynasty", "sum")
     aggregations.update(
         {
             "WinRate": ("IsWin", "mean"),
