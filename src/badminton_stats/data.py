@@ -258,6 +258,42 @@ def normalize_game_history(games: pd.DataFrame) -> pd.DataFrame:
         )
     )
 
+    dynasty_games: set[tuple[str, str, str]] = set()
+    single_match_rows = combined.loc[combined["IsIndexEven"].eq(0)].sort_values(
+        "DateTime", kind="stable"
+    )
+    for session_key, session_games in single_match_rows.groupby(
+        "Session Key", sort=False
+    ):
+        streak_team: Optional[str] = None
+        streak_length = 0
+        for game_type, winner, timestamp in session_games[
+            ["GameType", "Winner Canonical", "Timestamp"]
+        ].itertuples(index=False, name=None):
+            if game_type != "Doubles" or pd.isna(winner):
+                streak_team = None
+                streak_length = 0
+                continue
+
+            winner = str(winner)
+            streak_length = (
+                streak_length + 1 if winner == streak_team else 1
+            )
+            streak_team = winner
+            if streak_length == 3:
+                dynasty_games.add(
+                    (str(session_key), str(timestamp), winner)
+                )
+
+    combined["IsDynasty"] = [
+        result == "Won"
+        and (str(session_key), str(timestamp), str(team))
+        in dynasty_games
+        for session_key, timestamp, team, result in combined[
+            ["Session Key", "Timestamp", "TeamCanonical", "Result"]
+        ].itertuples(index=False, name=None)
+    ]
+
     session_order = (
         combined.groupby("Session Key", sort=False)["DateTime"]
         .min()

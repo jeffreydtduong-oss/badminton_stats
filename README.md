@@ -48,16 +48,20 @@ The **Compact cards** display presents each game vertically to make game
 details easier to read on narrow screens; the **Table** display remains
 available for comparing rows.
 
-The **Overall Stats** table summarizes wins, losses, win rate, average margin,
-and point differential per player/team for the filtered games. Selecting a
-row filters the **Head to Head Stats** and game history tables to that player
-or team. The head-to-head table reports the filtered record against each
-opponent; clearing the selected row restores all players and matchups.
+The **Overall Stats** table summarizes wins, losses, dynasties, win rate,
+average margin, and point differential per player/team for the filtered games.
+A dynasty is three or more consecutive doubles wins by the same team within
+one session; each run counts once. The doubles leaderboard credits each player
+on a dynasty-winning team. Selecting a row filters the **Head to Head Stats**
+and game history tables to that player or team. The head-to-head table reports
+the filtered record against each opponent; clearing the selected row restores
+all players and matchups.
 
 The **Leaderboard** page has separate Doubles and Singles tables with shared
 player, session, month, and date filters. Doubles results count each player
 individually, including across different partner combinations. Both tables
-include win/loss, margin, point differential, and good-/bad-side win rates.
+include win/loss, margin, point differential, and good-/bad-side win rates;
+the doubles table also reports each player's dynasty credits.
 
 The **Win Rates over Time** page plots individual players' win rates by month
 or session, with player, opponent, game type, and date filters. The

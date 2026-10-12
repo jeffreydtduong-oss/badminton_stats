@@ -125,6 +125,7 @@ def _leaderboard_stats(games: pd.DataFrame) -> pd.DataFrame:
         "Player",
         "Wins",
         "Losses",
+        "# of Dynasties",
         "Win Rate",
         "Wins Margin",
         "Losses Margin",
@@ -137,7 +138,13 @@ def _leaderboard_stats(games: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame(
             {
                 column: pd.Series(
-                    dtype="string" if column == "Player" else "float64"
+                    dtype=(
+                        "string"
+                        if column == "Player"
+                        else "int64"
+                        if column in {"Wins", "Losses", "# of Dynasties"}
+                        else "float64"
+                    )
                 )
                 for column in columns
             }
@@ -159,6 +166,7 @@ def _leaderboard_stats(games: pd.DataFrame) -> pd.DataFrame:
         Wins=("IsWin", "sum"),
         Losses=("IsWin", lambda wins: (~wins).sum()),
         WinRate=("IsWin", "mean"),
+        **{"# of Dynasties": ("IsDynasty", "sum")},
         WinsMargin=("WinMargin", "mean"),
         LossesMargin=("LossMargin", "mean"),
         TotalMargin=("Margin", "mean"),

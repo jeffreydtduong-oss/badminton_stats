@@ -196,7 +196,9 @@ def _donut_chart_html(good_side_wins: int, bad_side_wins: int) -> str:
 
 
 def _aggregate_stats(
-    frame: pd.DataFrame, group_columns: list[str]
+    frame: pd.DataFrame,
+    group_columns: list[str],
+    include_dynasties: bool = False,
 ) -> pd.DataFrame:
     columns = [
         *group_columns,
@@ -208,6 +210,8 @@ def _aggregate_stats(
         "Total Margin",
         "Point +/- per game",
     ]
+    if include_dynasties:
+        columns.insert(len(group_columns) + 2, "# of Dynasties")
     if frame.empty:
         return pd.DataFrame(
             {
@@ -216,7 +220,7 @@ def _aggregate_stats(
                         "string"
                         if column in group_columns
                         else "int64"
-                        if column in {"Wins", "Losses"}
+                        if column in {"Wins", "Losses", "# of Dynasties"}
                         else "float64"
                     )
                 )
@@ -232,6 +236,7 @@ def _aggregate_stats(
     )
     stats = grouped.agg(
         TotalGames=("DateTime", "size"),
+        **{"# of Dynasties": ("IsDynasty", "sum")},
         **{
             "Total Margin": ("Margin", "mean"),
             "Point +/- per game": ("PointDifferential", "mean"),
@@ -256,6 +261,8 @@ def _aggregate_stats(
     stats[["Wins", "Losses"]] = stats[["Wins", "Losses"]].fillna(0).astype(
         "int64"
     )
+    if include_dynasties:
+        stats["# of Dynasties"] = grouped["IsDynasty"].sum()
     stats["Win Rate"] = stats["Wins"] / stats["TotalGames"]
     return stats.reset_index().drop(columns="TotalGames")[columns]
 
@@ -373,6 +380,7 @@ if selected_players:
     filtered = filtered[filtered["TeamCanonical"].isin(selected_players)]
 if selected_opponents:
     filtered = filtered[filtered["OpponentCanonical"].isin(selected_opponents)]
+dynasty_rows = filtered[filtered["IsDynasty"]]
 if remove_double_counting:
     filtered = filtered[filtered["IsIndexEven"].eq(0)]
 
@@ -400,8 +408,14 @@ if len(session_selection) == 1 and session_selection[0] != SELECT_ALL:
 with session_duration_column:
     st.metric("Session Duration", session_duration)
 
-overall_stats = _aggregate_stats(filtered, ["TeamCanonical"]).rename(
-    columns={"TeamCanonical": "Player(s)"}
+overall_stats = _aggregate_stats(
+    filtered,
+    ["TeamCanonical"],
+    include_dynasties=True,
+).rename(columns={"TeamCanonical": "Player(s)"})
+dynasty_counts = dynasty_rows.groupby("TeamCanonical")["IsDynasty"].sum()
+overall_stats["# of Dynasties"] = (
+    overall_stats["Player(s)"].map(dynasty_counts).fillna(0).astype("int64")
 )
 overall_stats["_Games Played"] = overall_stats["Player(s)"].map(
     filtered["TeamCanonical"].value_counts()
