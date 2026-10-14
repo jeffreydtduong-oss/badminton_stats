@@ -7,6 +7,30 @@ import streamlit as st
 
 SELECT_ALL = "__trend_select_all__"
 
+MEASURE_COLUMNS = {
+    "Win Rate": "WinRate",
+    "Wins": "Wins",
+    "Losses": "Losses",
+    "Dynasties": "Dynasties",
+    "Wins Margin": "WinsMargin",
+    "Losses Margin": "LossesMargin",
+    "Total Margin": "TotalMargin",
+    "Point +/- per game": "PointDifference",
+    "Win % on Good Side": "WinPercentGoodSide",
+    "Win % on Bad Side": "WinPercentBadSide",
+}
+PERCENTAGE_MEASURES = {
+    "Win Rate",
+    "Win % on Good Side",
+    "Win % on Bad Side",
+}
+DECIMAL_MEASURES = {
+    "Wins Margin",
+    "Losses Margin",
+    "Total Margin",
+    "Point +/- per game",
+}
+
 
 def unique_values(frame: pd.DataFrame, column: str) -> list[str]:
     return sorted(frame[column].dropna().astype(str).unique().tolist())
@@ -96,7 +120,20 @@ def aggregate_trend_data(
     plot_games = games.copy()
     plot_games["IsWin"] = plot_games["Result"].eq("Won")
     plot_games["IsLoss"] = ~plot_games["IsWin"]
-    return (
+    denominator = plot_games["WinningPoints"] - 2
+    plot_games["Margin"] = (
+        (plot_games["PointDifferential"].abs() - 2)
+        / denominator.where(denominator.ne(0))
+    )
+    plot_games["WinMargin"] = plot_games["Margin"].where(plot_games["IsWin"])
+    plot_games["LossMargin"] = plot_games["Margin"].where(plot_games["IsLoss"])
+    plot_games["GoodSideWin"] = plot_games["IsWin"] & plot_games[
+        "IsIndexEven"
+    ].eq(0)
+    plot_games["BadSideWin"] = plot_games["IsWin"] & plot_games[
+        "IsIndexEven"
+    ].eq(1)
+    stats = (
         plot_games.groupby([series_column, "Period"], sort=False)
         .agg(
             WinRate=("IsWin", "mean"),
@@ -104,10 +141,23 @@ def aggregate_trend_data(
             Losses=("IsLoss", "sum"),
             Dynasties=("IsDynasty", "sum"),
             Games=("GameKey", "nunique"),
+            WinsMargin=("WinMargin", "mean"),
+            LossesMargin=("LossMargin", "mean"),
+            TotalMargin=("Margin", "mean"),
+            PointDifference=("PointDifferential", "mean"),
+            GoodSideWins=("GoodSideWin", "sum"),
+            BadSideWins=("BadSideWin", "sum"),
         )
         .reset_index()
         .rename(columns={series_column: "Series"})
     )
+    stats["WinPercentGoodSide"] = (
+        stats["GoodSideWins"] / stats["Wins"]
+    ).where(stats["Wins"].ne(0))
+    stats["WinPercentBadSide"] = (
+        stats["BadSideWins"] / stats["Wins"]
+    ).where(stats["Wins"].ne(0))
+    return stats
 
 
 def render_win_rate_chart(
@@ -138,8 +188,15 @@ def render_win_rate_chart(
         x_title = "Session Key"
 
     chart_data = aggregate_trend_data(plot_games, series_column)
-    is_percentage = measure == "Win Rate"
-    value_format = ".1%" if is_percentage else ".0f"
+    measure_column = MEASURE_COLUMNS[measure]
+    is_percentage = measure in PERCENTAGE_MEASURES
+    value_format = (
+        ".1%"
+        if is_percentage
+        else ".2f"
+        if measure in DECIMAL_MEASURES
+        else ".0f"
+    )
 
     base = alt.Chart(chart_data).encode(
         x=alt.X(
@@ -149,10 +206,18 @@ def render_win_rate_chart(
             axis=alt.Axis(labelAngle=-35),
         ),
         y=alt.Y(
-            f"{measure.replace(' ', '')}:Q",
+            f"{measure_column}:Q",
             title=measure,
             scale=alt.Scale(domain=[0, 1]) if is_percentage else alt.Undefined,
-            axis=alt.Axis(format="%" if is_percentage else ",.0f"),
+            axis=alt.Axis(
+                format=(
+                    ".1%"
+                    if is_percentage
+                    else ".2f"
+                    if measure in DECIMAL_MEASURES
+                    else ",.0f"
+                )
+            ),
         ),
         color=alt.Color("Series:N", title=series_title),
     )
@@ -162,7 +227,7 @@ def render_win_rate_chart(
                 alt.Tooltip("Series:N", title=series_title),
                 alt.Tooltip("Period:N", title=x_title),
                 alt.Tooltip(
-                    f"{measure.replace(' ', '')}:Q",
+                    f"{measure_column}:Q",
                     title=measure,
                     format=value_format,
                 ),
@@ -171,8 +236,8 @@ def render_win_rate_chart(
         ),
         base.mark_text(dy=-12, fontSize=11).encode(
             text=alt.Text(
-                f"{measure.replace(' ', '')}:Q",
-                format=".0%" if is_percentage else ".0f",
+                f"{measure_column}:Q",
+                format=value_format,
             ),
         ),
     ).properties(height=380)

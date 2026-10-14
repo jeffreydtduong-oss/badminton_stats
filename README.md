@@ -64,9 +64,10 @@ include win/loss, margin, point differential, and good-/bad-side win rates;
 the doubles table also reports each player's dynasty credits.
 
 The **Win Rates over Time** page plots individual players' win rates, wins,
-losses, or dynasty credits by month or session, with player, opponent, game
-type, and date filters. Dynasty credits count for each player on the winning
-doubles team; dynasties are unavailable when only singles games are selected.
+losses, dynasty credits, game margins, point differential, or good-/bad-side
+win percentages by month or session, with player, opponent, game type, and date
+filters. Dynasty credits count for each player on the winning doubles team;
+dynasties are unavailable when only singles games are selected.
 The **Partnership Win Rates over Time** page plots doubles-pair win rates by
 month or session, with pair, opponent, and date filters. Both trend charts show
 a label at each point and use smooth lines. The opponent filters have an

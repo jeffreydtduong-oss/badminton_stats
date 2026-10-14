@@ -116,7 +116,18 @@ player_games = player_games[opponent_mask]
 
 measure = st.selectbox(
     "Statistic",
-    ["Win Rate", "Wins", "Losses", "Dynasties"],
+    [
+        "Win Rate",
+        "Wins",
+        "Losses",
+        "Dynasties",
+        "Wins Margin",
+        "Losses Margin",
+        "Total Margin",
+        "Point +/- per game",
+        "Win % on Good Side",
+        "Win % on Bad Side",
+    ],
     key=MEASURE_KEY,
 )
 if measure == "Dynasties":

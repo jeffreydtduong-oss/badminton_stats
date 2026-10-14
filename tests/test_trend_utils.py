@@ -15,6 +15,9 @@ class TrendAggregationTests(unittest.TestCase):
                     "Result": "Won",
                     "IsDynasty": True,
                     "GameKey": "game-1",
+                    "WinningPoints": 21,
+                    "PointDifferential": 5,
+                    "IsIndexEven": 0,
                 },
                 {
                     "Player": "A",
@@ -22,6 +25,9 @@ class TrendAggregationTests(unittest.TestCase):
                     "Result": "Lost",
                     "IsDynasty": False,
                     "GameKey": "game-2",
+                    "WinningPoints": 21,
+                    "PointDifferential": -3,
+                    "IsIndexEven": 1,
                 },
                 {
                     "Player": "B",
@@ -29,6 +35,19 @@ class TrendAggregationTests(unittest.TestCase):
                     "Result": "Won",
                     "IsDynasty": True,
                     "GameKey": "game-1",
+                    "WinningPoints": 21,
+                    "PointDifferential": 5,
+                    "IsIndexEven": 0,
+                },
+                {
+                    "Player": "C",
+                    "Period": "2026-01",
+                    "Result": "Lost",
+                    "IsDynasty": False,
+                    "GameKey": "game-3",
+                    "WinningPoints": 21,
+                    "PointDifferential": -4,
+                    "IsIndexEven": 1,
                 },
             ]
         )
@@ -40,7 +59,17 @@ class TrendAggregationTests(unittest.TestCase):
         self.assertEqual(stats.loc["A", "Losses"], 1)
         self.assertEqual(stats.loc["A", "Dynasties"], 1)
         self.assertEqual(stats.loc["A", "Games"], 2)
+        self.assertAlmostEqual(stats.loc["A", "WinsMargin"], 3 / 19)
+        self.assertAlmostEqual(stats.loc["A", "LossesMargin"], 1 / 19)
+        self.assertAlmostEqual(stats.loc["A", "TotalMargin"], 2 / 19)
+        self.assertEqual(stats.loc["A", "PointDifference"], 1)
+        self.assertEqual(stats.loc["A", "WinPercentGoodSide"], 1)
+        self.assertEqual(stats.loc["A", "WinPercentBadSide"], 0)
         self.assertEqual(stats.loc["B", "Dynasties"], 1)
+        self.assertEqual(stats.loc["B", "WinPercentBadSide"], 0)
+        self.assertEqual(stats.loc["C", "WinRate"], 0)
+        self.assertTrue(pd.isna(stats.loc["C", "WinPercentGoodSide"]))
+        self.assertTrue(pd.isna(stats.loc["C", "WinPercentBadSide"]))
 
 
 if __name__ == "__main__":
