@@ -23,7 +23,11 @@ EXCLUDE_OPPONENTS_KEY = "win_rates_exclude_opponents"
 MEASURE_KEY = "win_rates_measure"
 
 
-st.title("Win Rates over Time")
+selected_measure = st.session_state.get(MEASURE_KEY, "Win Rate")
+title_measure = (
+    "Win Rates" if selected_measure == "Win Rate" else selected_measure
+)
+st.title(f"{title_measure} over Time")
 
 games = st.session_state["games"].copy()
 if games.empty:
