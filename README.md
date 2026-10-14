@@ -15,7 +15,7 @@ files from `E:\Desktop\Badminton apps backup\Stats`. With Google Sheets
 credentials configured, it reads the `Game History` worksheet instead.
 
 Use the sidebar to navigate between **Game History & Matchups**, **Leaderboard**,
-**Win Rates over Time**, **Partnership Win Rates over Time**, and
+**Stats over Time**, **Partnership Win Rates over Time**, and
 **Margin over Time**. The game history, leaderboard, and trends pages are
 available.
 
@@ -63,12 +63,14 @@ individually, including across different partner combinations. Both tables
 include win/loss, margin, point differential, and good-/bad-side win rates;
 the doubles table also reports each player's dynasty credits.
 
-The **Win Rates over Time** page plots individual players' win rates by month
-or session, with player, opponent, game type, and date filters. The
-**Partnership Win Rates over Time** page plots doubles-pair win rates by month
-or session, with pair, opponent, and date filters. Both trend charts show a
-percentage label at each point and use smooth lines. The opponent filters have
-an explicit **Exclude selected opponents** option; all other filters use
+The **Win Rates over Time** page plots individual players' win rates, wins,
+losses, or dynasty credits by month or session, with player, opponent, game
+type, and date filters. Dynasty credits count for each player on the winning
+doubles team; dynasties are unavailable when only singles games are selected.
+The **Partnership Win Rates over Time** page plots doubles-pair win rates by
+month or session, with pair, opponent, and date filters. Both trend charts show
+a label at each point and use smooth lines. The opponent filters have an
+explicit **Exclude selected opponents** option; all other filters use
 **Select all** only to include every option.
 
 The **Margin over Time** page plots average game margin by session or month,

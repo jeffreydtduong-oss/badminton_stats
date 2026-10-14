@@ -90,12 +90,33 @@ def expand_individual_players(games: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def aggregate_trend_data(
+    games: pd.DataFrame, series_column: str
+) -> pd.DataFrame:
+    plot_games = games.copy()
+    plot_games["IsWin"] = plot_games["Result"].eq("Won")
+    plot_games["IsLoss"] = ~plot_games["IsWin"]
+    return (
+        plot_games.groupby([series_column, "Period"], sort=False)
+        .agg(
+            WinRate=("IsWin", "mean"),
+            Wins=("IsWin", "sum"),
+            Losses=("IsLoss", "sum"),
+            Dynasties=("IsDynasty", "sum"),
+            Games=("GameKey", "nunique"),
+        )
+        .reset_index()
+        .rename(columns={series_column: "Series"})
+    )
+
+
 def render_win_rate_chart(
     games: pd.DataFrame,
     series_column: str,
     series_title: str,
     time_period: str,
     key: str,
+    measure: str = "Win Rate",
 ) -> None:
     if games.empty:
         st.info("No games are available for the selected filters.")
@@ -116,16 +137,9 @@ def render_win_rate_chart(
         plot_games["Period"] = plot_games["Session Key"]
         x_title = "Session Key"
 
-    plot_games["IsWin"] = plot_games["Result"].eq("Won")
-    chart_data = (
-        plot_games.groupby([series_column, "Period"], sort=False)
-        .agg(
-            WinRate=("IsWin", "mean"),
-            Games=("GameKey", "nunique"),
-        )
-        .reset_index()
-        .rename(columns={series_column: "Series"})
-    )
+    chart_data = aggregate_trend_data(plot_games, series_column)
+    is_percentage = measure == "Win Rate"
+    value_format = ".1%" if is_percentage else ".0f"
 
     base = alt.Chart(chart_data).encode(
         x=alt.X(
@@ -135,10 +149,10 @@ def render_win_rate_chart(
             axis=alt.Axis(labelAngle=-35),
         ),
         y=alt.Y(
-            "WinRate:Q",
-            title="Win Rate",
-            scale=alt.Scale(domain=[0, 1]),
-            axis=alt.Axis(format="%"),
+            f"{measure.replace(' ', '')}:Q",
+            title=measure,
+            scale=alt.Scale(domain=[0, 1]) if is_percentage else alt.Undefined,
+            axis=alt.Axis(format="%" if is_percentage else ",.0f"),
         ),
         color=alt.Color("Series:N", title=series_title),
     )
@@ -147,12 +161,19 @@ def render_win_rate_chart(
             tooltip=[
                 alt.Tooltip("Series:N", title=series_title),
                 alt.Tooltip("Period:N", title=x_title),
-                alt.Tooltip("WinRate:Q", title="Win Rate", format=".1%"),
+                alt.Tooltip(
+                    f"{measure.replace(' ', '')}:Q",
+                    title=measure,
+                    format=value_format,
+                ),
                 alt.Tooltip("Games:Q", title="Games"),
             ],
         ),
         base.mark_text(dy=-12, fontSize=11).encode(
-            text=alt.Text("WinRate:Q", format=".0%"),
+            text=alt.Text(
+                f"{measure.replace(' ', '')}:Q",
+                format=".0%" if is_percentage else ".0f",
+            ),
         ),
     ).properties(height=380)
     st.altair_chart(chart, use_container_width=True, key=key)

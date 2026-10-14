@@ -108,7 +108,7 @@ page = st.navigation(
             st.Page("pages/leaderboard.py", title="Leaderboard"),
         ],
         "Trends": [
-            st.Page("pages/win_rates.py", title="Win Rates over Time"),
+            st.Page("pages/win_rates.py", title="Stats over Time"),
             st.Page(
                 "pages/partnership_win_rates.py",
                 title="Partnership Win Rates over Time",

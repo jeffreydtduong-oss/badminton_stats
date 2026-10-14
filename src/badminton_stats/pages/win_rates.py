@@ -20,6 +20,7 @@ FILTER_KEYS = {
 DATE_RANGE_KEY = "win_rates_date_range"
 TIME_PERIOD_KEY = "win_rates_time_period"
 EXCLUDE_OPPONENTS_KEY = "win_rates_exclude_opponents"
+MEASURE_KEY = "win_rates_measure"
 
 
 st.title("Win Rates over Time")
@@ -45,6 +46,7 @@ with st.sidebar:
         st.session_state[EXCLUDE_OPPONENTS_KEY] = False
         st.session_state[DATE_RANGE_KEY] = (min_date, max_date)
         st.session_state[TIME_PERIOD_KEY] = "Monthly"
+        st.session_state[MEASURE_KEY] = "Win Rate"
 
     selected_players = multiselect(
         "Player(s)",
@@ -108,10 +110,22 @@ else:
     ) | player_games["Opponent2"].isin(selected_opponents)
 player_games = player_games[opponent_mask]
 
+measure = st.selectbox(
+    "Statistic",
+    ["Win Rate", "Wins", "Losses", "Dynasties"],
+    key=MEASURE_KEY,
+)
+if measure == "Dynasties":
+    player_games = player_games[player_games["GameType"].eq("Doubles")]
+    if player_games.empty:
+        st.info("Dynasties are only available for Doubles games.")
+        st.stop()
+
 render_win_rate_chart(
     player_games,
     series_column="Player",
     series_title="Player",
     time_period=time_period,
     key="win_rates_line_chart",
+    measure=measure,
 )
