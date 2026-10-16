@@ -30,6 +30,37 @@ DECIMAL_MEASURES = {
     "Total Margin",
     "Point +/- per game",
 }
+TREND_COLORS = [
+    "#174C3C",
+    "#8FAF2F",
+    "#247A63",
+    "#D18A22",
+    "#4E8E83",
+    "#8B6A9D",
+    "#55769B",
+    "#B3654C",
+    "#75863C",
+    "#6D7880",
+]
+
+
+def style_trend_chart(chart: alt.TopLevelMixin) -> alt.TopLevelMixin:
+    return chart.configure(
+        background="transparent",
+        font="sans-serif",
+        axis=alt.AxisConfig(
+            labelColor="#5B6B63",
+            titleColor="#31483C",
+            gridColor="#E4EBE5",
+            domainColor="#D4DED6",
+            tickColor="#D4DED6",
+        ),
+        legend=alt.LegendConfig(
+            labelColor="#31483C",
+            titleColor="#31483C",
+        ),
+        view=alt.ViewConfig(stroke="transparent"),
+    )
 
 
 def unique_values(frame: pd.DataFrame, column: str) -> list[str]:
@@ -219,28 +250,34 @@ def render_win_rate_chart(
                 )
             ),
         ),
-        color=alt.Color("Series:N", title=series_title),
+        color=alt.Color(
+            "Series:N",
+            title=series_title,
+            scale=alt.Scale(range=TREND_COLORS),
+        ),
     )
-    chart = alt.layer(
-        base.mark_line(interpolate="monotone", point=True).encode(
-            tooltip=[
-                alt.Tooltip("Series:N", title=series_title),
-                alt.Tooltip("Period:N", title=x_title),
-                alt.Tooltip(
+    chart = style_trend_chart(
+        alt.layer(
+            base.mark_line(interpolate="monotone", point=True).encode(
+                tooltip=[
+                    alt.Tooltip("Series:N", title=series_title),
+                    alt.Tooltip("Period:N", title=x_title),
+                    alt.Tooltip(
+                        f"{measure_column}:Q",
+                        title=measure,
+                        format=value_format,
+                    ),
+                    alt.Tooltip("Games:Q", title="Games"),
+                ],
+            ),
+            base.mark_text(dy=-12, fontSize=11).encode(
+                text=alt.Text(
                     f"{measure_column}:Q",
-                    title=measure,
                     format=value_format,
                 ),
-                alt.Tooltip("Games:Q", title="Games"),
-            ],
-        ),
-        base.mark_text(dy=-12, fontSize=11).encode(
-            text=alt.Text(
-                f"{measure_column}:Q",
-                format=value_format,
             ),
-        ),
-    ).properties(height=380)
+        ).properties(height=400)
+    )
     st.altair_chart(chart, use_container_width=True, key=key)
 
 

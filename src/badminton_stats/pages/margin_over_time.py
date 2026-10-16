@@ -1,6 +1,8 @@
 import altair as alt
 import streamlit as st
 
+from badminton_stats.pages.trend_utils import style_trend_chart
+
 
 TIME_PERIOD_KEY = "margin_over_time_period"
 GAME_TYPES_KEY = "margin_over_time_game_types"
@@ -102,9 +104,10 @@ base = alt.Chart(margin_by_period).encode(
     ),
     y=alt.Y("Margin:Q", title="Margin"),
 )
-chart = (
+chart = style_trend_chart(
     alt.layer(
         base.mark_line(point=True, interpolate="monotone").encode(
+            color=alt.value("#174C3C"),
             tooltip=[
                 alt.Tooltip("Period:N", title=x_title),
                 alt.Tooltip("Margin:Q", title="Margin", format=".2f"),
@@ -112,9 +115,9 @@ chart = (
             ],
         ),
         base.mark_text(dy=-12, fontSize=11).encode(
+            color=alt.value("#174C3C"),
             text=alt.Text("Margin:Q", format=".2f"),
         ),
-    )
-    .properties(height=380)
+    ).properties(height=400)
 )
 st.altair_chart(chart, use_container_width=True, key="margin_over_time_chart")

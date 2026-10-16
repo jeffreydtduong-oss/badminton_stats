@@ -160,7 +160,7 @@ def _donut_chart_html(good_side_wins: int, bad_side_wins: int) -> str:
         return (
             f'<span style="position:absolute;left:{left:.1f}px;'
             f'top:{top:.1f}px;transform:translate(-50%,-50%);'
-            'color:#000000;font-size:12px;font-weight:700;'
+            'color:#1d2925;font-size:12px;font-weight:700;'
             'text-shadow:0 1px 2px rgba(255,255,255,0.6);">'
             f"{rate:.0%}</span>"
         )
@@ -180,15 +180,15 @@ def _donut_chart_html(good_side_wins: int, bad_side_wins: int) -> str:
                       background:
                         radial-gradient(circle, #ffffff 0 54%, transparent 55%),
                         conic-gradient(
-                          #2563eb 0 {good_side_rate:.4%},
-                          #f97316 {good_side_rate:.4%} 100%);
+                          #174c3c 0 {good_side_rate:.4%},
+                          #8faf2f {good_side_rate:.4%} 100%);
                       display:grid;place-items:center;">
             {arc_labels}
           </div>
           <div style="display:grid;gap:0.5rem;font-size:0.875rem;">
-            <div><span style="color:#2563eb">●</span>
+            <div><span style="color:#174c3c">●</span>
                  Good side wins: {good_side_wins} ({good_side_rate:.1%})</div>
-            <div><span style="color:#f97316">●</span>
+            <div><span style="color:#8faf2f">●</span>
                  Bad side wins: {bad_side_wins} ({bad_side_rate:.1%})</div>
           </div>
         </div>
@@ -599,7 +599,7 @@ table.index = pd.RangeIndex(
 table.index.name = "Game Number"
 
 winning_style = (
-    "background-color: #dbeafe; color: #1d4ed8; font-weight: 600"
+    "background-color: #e6f0df; color: #174c3c; font-weight: 600"
 )
 cell_styles = pd.DataFrame("", index=table.index, columns=table.columns)
 team_won = page_games["Result"].eq("Won").to_numpy()
@@ -645,12 +645,16 @@ else:
             score = html.escape(str(row["Final Score"]))
             if team_won[row_position]:
                 team = (
-                    '<span style="color:#1d4ed8;font-weight:600">'
+                    '<span style="background-color:#e6f0df;color:#174c3c;'
+                    'font-weight:700;padding:0.15rem 0.4rem;'
+                    'border-radius:0.35rem">'
                     f"{team}</span>"
                 )
             else:
                 opponent = (
-                    f'<span style="color:#1d4ed8;font-weight:600">'
+                    '<span style="background-color:#e6f0df;color:#174c3c;'
+                    'font-weight:700;padding:0.15rem 0.4rem;'
+                    'border-radius:0.35rem">'
                     f"{opponent}</span>"
                 )
             st.html(f"{team} &nbsp; {score} &nbsp; {opponent}")
