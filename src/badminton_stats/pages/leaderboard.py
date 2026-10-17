@@ -5,9 +5,9 @@ import streamlit as st
 
 from badminton_stats.filter_state import (
     SHARED_FILTER_KEYS,
-    prepare_date_range_state,
     prepare_multiselect_state,
-    sync_date_range_state,
+    render_date_range_inputs,
+    render_searchable_multiselect,
     sync_multiselect_state,
 )
 
@@ -247,6 +247,7 @@ with st.sidebar:
             min_date,
             max_date,
         )
+        st.session_state[f"{FILTER_KEYS['players']}_search"] = ""
 
     selected_sessions = _multiselect(
         "Session Key",
@@ -259,22 +260,12 @@ with st.sidebar:
         available_months,
         "months",
     )
-    prepare_date_range_state(
+    selected_date_range = render_date_range_inputs(
         DATE_RANGE_KEY,
         SHARED_FILTER_KEYS["date_range"],
         (min_date, max_date),
         min_date,
         max_date,
-    )
-    selected_date_range = st.date_input(
-        "DateTime",
-        value=(min_date, max_date),
-        min_value=min_date,
-        max_value=max_date,
-        format="YYYY-MM-DD",
-        key=DATE_RANGE_KEY,
-        on_change=sync_date_range_state,
-        args=(DATE_RANGE_KEY, SHARED_FILTER_KEYS["date_range"]),
     )
     player_context = games[
         games["Session Key"].isin(selected_sessions)
@@ -294,11 +285,14 @@ with st.sidebar:
             ignore_index=True,
         )
     )
-    selected_players = _multiselect(
+    selected_players = render_searchable_multiselect(
         "Player",
         player_names,
-        "players",
-        placeholder="Search players...",
+        FILTER_KEYS["players"],
+        SELECT_ALL,
+    )
+    all_players_selected = (
+        SELECT_ALL in st.session_state[FILTER_KEYS["players"]]
     )
 
 filtered = player_context.copy()
@@ -308,7 +302,7 @@ for game_type, title in (
     ("Singles", "Singles Leaderboard"),
 ):
     player_games = _player_rows(filtered, game_type)
-    if selected_players:
+    if not all_players_selected:
         player_games = player_games[player_games["Player"].isin(selected_players)]
 
     stats = _leaderboard_stats(

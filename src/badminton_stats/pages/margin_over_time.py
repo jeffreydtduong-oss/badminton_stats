@@ -62,15 +62,17 @@ if not period_order:
 
 with st.sidebar:
     max_data_points = len(period_order)
-    data_points_key_value = min(
-        int(st.session_state.get(DATA_POINTS_KEY, 10)),
+    last_data_points = min(
+        max(int(st.session_state.get(DATA_POINTS_KEY, 10)), 1),
         max_data_points,
     )
-    last_data_points = st.slider(
+    st.session_state[DATA_POINTS_KEY] = last_data_points
+    last_data_points = st.number_input(
         "Last N data points",
         min_value=1,
         max_value=max_data_points,
-        value=data_points_key_value,
+        value=last_data_points,
+        step=1,
         key=DATA_POINTS_KEY,
     )
 

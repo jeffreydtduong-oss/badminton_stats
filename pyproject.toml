@@ -6,11 +6,11 @@ readme = "README.md"
 authors = [
     { name = "Jeffrey", email = "jeffrey.dt.duong@gmail.com" }
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "gspread>=6.1.0",
     "pandas>=2.0.0",
-    "streamlit>=1.50.0",
+    "streamlit>=1.64.0",
 ]
 
 [project.scripts]

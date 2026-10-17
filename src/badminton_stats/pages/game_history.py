@@ -8,9 +8,9 @@ import streamlit as st
 
 from badminton_stats.filter_state import (
     SHARED_FILTER_KEYS,
-    prepare_date_range_state,
     prepare_multiselect_state,
-    sync_date_range_state,
+    render_date_range_inputs,
+    render_searchable_multiselect,
     sync_multiselect_state,
 )
 
@@ -299,6 +299,8 @@ with st.sidebar:
         )
         st.session_state[REMOVE_DOUBLE_COUNTING_KEY] = False
         st.session_state[TABLE_PAGE_KEY] = 1
+        for key in ("players", "opponents"):
+            st.session_state[f"{FILTER_KEYS[key]}_search"] = ""
 
     selected_game_types = _multiselect(
         "GameType",
@@ -317,22 +319,12 @@ with st.sidebar:
         available_months,
         "months",
     )
-    prepare_date_range_state(
+    selected_date_range = render_date_range_inputs(
         DATE_RANGE_KEY,
         SHARED_FILTER_KEYS["date_range"],
         (min_date, max_date),
         min_date,
         max_date,
-    )
-    selected_date_range = st.date_input(
-        "DateTime",
-        value=(min_date, max_date),
-        min_value=min_date,
-        max_value=max_date,
-        format="YYYY-MM-DD",
-        key=DATE_RANGE_KEY,
-        on_change=sync_date_range_state,
-        args=(DATE_RANGE_KEY, SHARED_FILTER_KEYS["date_range"]),
     )
 
     player_context = games[
@@ -348,20 +340,20 @@ with st.sidebar:
     if remove_double_counting:
         player_context = player_context[player_context["IsIndexEven"].eq(0)]
 
-    selected_players = _multiselect(
+    selected_players = render_searchable_multiselect(
         "Player(s)",
         _unique_values(player_context, "TeamCanonical"),
-        "players",
-        placeholder="Search players...",
+        FILTER_KEYS["players"],
+        SELECT_ALL,
     )
     opponent_context = player_context[
         player_context["TeamCanonical"].isin(selected_players)
     ]
-    selected_opponents = _multiselect(
+    selected_opponents = render_searchable_multiselect(
         "Opponent(s)",
         _unique_values(opponent_context, "OpponentCanonical"),
-        "opponents",
-        placeholder="Search opponents...",
+        FILTER_KEYS["opponents"],
+        SELECT_ALL,
     )
     remove_double_counting = st.checkbox(
         "Remove Double Counting",
@@ -376,9 +368,9 @@ filtered = games[
 if isinstance(selected_date_range, tuple) and len(selected_date_range) == 2:
     start_date, end_date = selected_date_range
     filtered = filtered[filtered["DateTime"].dt.date.between(start_date, end_date)]
-if selected_players:
+if SELECT_ALL not in st.session_state[FILTER_KEYS["players"]]:
     filtered = filtered[filtered["TeamCanonical"].isin(selected_players)]
-if selected_opponents:
+if SELECT_ALL not in st.session_state[FILTER_KEYS["opponents"]]:
     filtered = filtered[filtered["OpponentCanonical"].isin(selected_opponents)]
 dynasty_rows = filtered[filtered["IsDynasty"]]
 if remove_double_counting:
@@ -425,6 +417,31 @@ overall_stats = overall_stats.sort_values(
     ascending=False,
     kind="stable",
 ).drop(columns="_Games Played")
+overall_stats_row_count = len(overall_stats)
+if filtered.empty:
+    total_stats = pd.DataFrame(
+        [
+            {
+                "Player(s)": "Total",
+                "Wins": 0,
+                "Losses": 0,
+                "Dynasties": int(overall_stats["Dynasties"].sum()),
+                "Win Rate": float("nan"),
+                "Wins Margin": float("nan"),
+                "Losses Margin": float("nan"),
+                "Total Margin": float("nan"),
+                "Point +/- per game": float("nan"),
+            }
+        ],
+        columns=overall_stats.columns,
+    )
+else:
+    total_stats = _aggregate_stats(
+        filtered.assign(_Total="Total"),
+        ["_Total"],
+        include_dynasties=True,
+    ).rename(columns={"_Total": "Player(s)"})
+    total_stats["Dynasties"] = int(overall_stats["Dynasties"].sum())
 filter_signature = repr(
     (
         tuple(selected_game_types),
@@ -440,13 +457,23 @@ overall_stats_key = (
     f"{OVERALL_STATS_TABLE_KEY_PREFIX}_"
     f"{hashlib.sha256(filter_signature.encode()).hexdigest()[:12]}"
 )
+total_row_index = len(overall_stats)
+overall_stats = pd.concat([overall_stats, total_stats], ignore_index=True)
+overall_stats_table = overall_stats.style.set_properties(
+    subset=pd.IndexSlice[[total_row_index], :],
+    **{
+        "font-weight": "bold",
+        "background-color": "#FFFFFF",
+    },
+)
 
 st.subheader("Overall Stats")
 st.caption(
     "Select a row to quickly cross filter Head to Head Stats and Game History"
 )
 overall_selection = st.dataframe(
-    overall_stats,
+    overall_stats_table,
+    height="content" if len(overall_stats) <= 8 else 400,
     column_config={
         "Player(s)": st.column_config.TextColumn(pinned=True),
         "Win Rate": st.column_config.NumberColumn(format="percent"),
@@ -466,7 +493,7 @@ else:
     selected_rows = overall_selection.selection.rows
 selected_player = (
     str(overall_stats.iloc[selected_rows[0]]["Player(s)"])
-    if selected_rows and 0 <= selected_rows[0] < len(overall_stats)
+    if selected_rows and 0 <= selected_rows[0] < overall_stats_row_count
     else None
 )
 

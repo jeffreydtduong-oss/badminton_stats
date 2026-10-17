@@ -4,7 +4,7 @@ A Streamlit app for exploring badminton game history.
 
 ## Run the app
 
-From the project root, run:
+Use Python 3.10 or newer. From the project root, run:
 
 ```powershell
 uv run streamlit run src\badminton_stats\main.py
@@ -36,7 +36,11 @@ session fields. Rows with duplicate `DateTime` values are reduced to the first
 row before the two perspectives are created.
 
 The **Game History** page includes filters for game type, session, month, date
-range, team, and opponent. The Games Played summary counts distinct matches.
+range with separate start and end calendar fields, team, and opponent. The
+start and end dates are shared between the Game History and Leaderboard pages.
+The Win Rates and Partnership Win Rates pages use the same two-field date
+range control.
+The Games Played summary counts distinct matches.
 **Remove Double Counting** shows only one team perspective for each match;
 clear all filters restores the full date range and selections. The **Win Rate
 by Sides** donut chart shows each side's share of wins for the filtered matches.
@@ -50,6 +54,10 @@ available for comparing rows.
 
 The **Overall Stats** table summarizes wins, losses, dynasties, win rate,
 average margin, and point differential per player/team for the filtered games.
+The player table grows to fit when it has few rows and becomes scrollable for
+longer lists, with a bold totals row at the bottom. The totals background
+matches the column-header background and is calculated from the filtered games;
+for long tables, scroll to the bottom to see it.
 A dynasty is three or more consecutive doubles wins by the same team within
 one session; each run counts once. The doubles leaderboard credits each player
 on a dynasty-winning team. Selecting a row filters the **Head to Head Stats**
@@ -58,25 +66,31 @@ the filtered record against each opponent; clearing the selected row restores
 all players and matchups.
 
 The **Leaderboard** page has separate Doubles and Singles tables with shared
-player, session, month, and date filters. Doubles results count each player
-individually, including across different partner combinations. Both tables
-include win/loss, margin, point differential, and good-/bad-side win rates;
-the doubles table also reports each player's dynasty credits.
+player, session, month, and date filters. The player picker filters its
+checkbox choices as you type, with all players selected by default. Its popover
+stays open while changing selections. Doubles results count
+each player individually, including across different partner combinations.
+Both tables include win/loss, margin, point differential, and good-/bad-side
+win rates; the doubles table also reports each player's dynasty credits. Game
+History & Matchups uses the same picker for players and opponents.
 
 The **Win Rates over Time** page plots individual players' win rates, wins,
 losses, dynasty credits, game margins, point differential, or good-/bad-side
 win percentages by month or session, with player, opponent, game type, and date
-filters. Dynasty credits count for each player on the winning doubles team;
+filters. The player and opponent choices reflect the selected game type and
+date range. Dynasty credits count for each player on the winning doubles team;
 dynasties are unavailable when only singles games are selected.
 The **Partnership Win Rates over Time** page plots doubles-pair win rates by
-month or session, with pair, opponent, and date filters. Both trend charts show
-a label at each point and use smooth lines. The opponent filters have an
-explicit **Exclude selected opponents** option; all other filters use
-**Select all** only to include every option.
+month or session, with pair, opponent, and date filters. Pair and opponent
+choices reflect the selected date range. Both trend charts show a label at
+each point and use smooth lines. The opponent filters have an explicit
+**Exclude selected opponents** option; all other filters use **Select all**
+only to include every option.
 
 The **Margin over Time** page plots average game margin by session or month,
 with filters for game type and the number of most recent data points to show.
-It defaults to Doubles, By Session, and the latest 10 sessions.
+The **Last N data points** value can be typed directly and defaults to 10. It
+defaults to Doubles and By Session.
 
 ## Google Sheets updates and Streamlit Community Cloud
 

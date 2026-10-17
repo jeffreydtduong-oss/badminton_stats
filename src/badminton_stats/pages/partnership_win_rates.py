@@ -1,5 +1,6 @@
 import streamlit as st
 
+from badminton_stats.filter_state import render_date_range_inputs
 from badminton_stats.pages.trend_utils import (
     filter_date_range,
     multiselect,
@@ -40,15 +41,23 @@ with st.sidebar:
         st.session_state[DATE_RANGE_KEY] = (min_date, max_date)
         st.session_state[TIME_PERIOD_KEY] = "Monthly"
 
+    selected_date_range = render_date_range_inputs(
+        DATE_RANGE_KEY,
+        DATE_RANGE_KEY,
+        (min_date, max_date),
+        min_date,
+        max_date,
+    )
+    option_games = filter_date_range(doubles_games, selected_date_range)
     selected_pairs = multiselect(
         "Doubles Pair",
-        unique_values(doubles_games, "TeamCanonical"),
+        unique_values(option_games, "TeamCanonical"),
         PAIR_KEY,
         placeholder="Search doubles pairs...",
         include_select_all=False,
     )
-    opponent_context = doubles_games[
-        doubles_games["TeamCanonical"].isin(selected_pairs)
+    opponent_context = option_games[
+        option_games["TeamCanonical"].isin(selected_pairs)
     ]
     exclude_opponents = st.checkbox(
         "Exclude selected opponents",
@@ -66,16 +75,8 @@ with st.sidebar:
         ["Monthly", "By Session"],
         key=TIME_PERIOD_KEY,
     )
-    selected_date_range = st.date_input(
-        "DateTime",
-        value=(min_date, max_date),
-        min_value=min_date,
-        max_value=max_date,
-        format="YYYY-MM-DD",
-        key=DATE_RANGE_KEY,
-    )
 
-filtered = filter_date_range(doubles_games, selected_date_range)
+filtered = option_games
 filtered = filtered[filtered["TeamCanonical"].isin(selected_pairs)]
 if exclude_opponents:
     excluded_opponents = selected_values(OPPONENT_KEY)

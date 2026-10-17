@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 
+from badminton_stats.filter_state import render_date_range_inputs
 from badminton_stats.pages.trend_utils import (
     SELECT_ALL,
     expand_individual_players,
@@ -37,8 +38,6 @@ if games.empty:
 available_game_types = unique_values(games, "GameType")
 min_date = games["DateTime"].min().date()
 max_date = games["DateTime"].max().date()
-available_player_rows = expand_individual_players(games)
-
 with st.sidebar:
     if st.button("Clear all filters", use_container_width=True):
         for state_key in FILTER_KEYS.values():
@@ -52,6 +51,21 @@ with st.sidebar:
         st.session_state[TIME_PERIOD_KEY] = "Monthly"
         st.session_state[MEASURE_KEY] = "Win Rate"
 
+    selected_game_types = multiselect(
+        "GameType",
+        available_game_types,
+        FILTER_KEYS["game_types"],
+    )
+    selected_date_range = render_date_range_inputs(
+        DATE_RANGE_KEY,
+        DATE_RANGE_KEY,
+        (min_date, max_date),
+        min_date,
+        max_date,
+    )
+    option_games = games[games["GameType"].isin(selected_game_types)]
+    option_games = filter_date_range(option_games, selected_date_range)
+    available_player_rows = expand_individual_players(option_games)
     selected_players = multiselect(
         "Player(s)",
         unique_values(available_player_rows, "Player"),
@@ -80,27 +94,13 @@ with st.sidebar:
         placeholder="Search opponents...",
         include_select_all=False,
     )
-    selected_game_types = multiselect(
-        "GameType",
-        available_game_types,
-        FILTER_KEYS["game_types"],
-    )
     time_period = st.selectbox(
         "Time Period",
         ["Monthly", "By Session"],
         key=TIME_PERIOD_KEY,
     )
-    selected_date_range = st.date_input(
-        "DateTime",
-        value=(min_date, max_date),
-        min_value=min_date,
-        max_value=max_date,
-        format="YYYY-MM-DD",
-        key=DATE_RANGE_KEY,
-    )
 
-filtered = games[games["GameType"].isin(selected_game_types)]
-filtered = filter_date_range(filtered, selected_date_range)
+filtered = option_games
 player_games = expand_individual_players(filtered)
 player_games = player_games[player_games["Player"].isin(selected_players)]
 if exclude_opponents:
