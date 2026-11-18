@@ -15,9 +15,9 @@ files from `E:\Desktop\Badminton apps backup\Stats`. With Google Sheets
 credentials configured, it reads the `Game History` worksheet instead.
 
 Use the sidebar to navigate between **Game History & Matchups**, **Leaderboard**,
-**Stats over Time**, **Partnership Win Rates over Time**, and
-**Margin over Time**. The game history, leaderboard, and trends pages are
-available.
+**Session Leaderboard**, **Stats over Time**, **Partnership Win Rates over
+Time**, and **Margin over Time**. The game history, leaderboard, and trends
+pages are available.
 
 ## Game history data
 
@@ -73,6 +73,12 @@ each player individually, including across different partner combinations.
 Both tables include win/loss, margin, point differential, and good-/bad-side
 win rates; the doubles table also reports each player's dynasty credits. Game
 History & Matchups uses the same picker for players and opponents.
+
+The **Session Leaderboard** page ranks players by sessions played, with their
+game counts, for the selected game types, months, date range, and players. The
+player picker is searchable. Select a row to see that player's sessions and
+summary totals, with a collapsible monthly breakdown; use **Back to
+leaderboard** to return.
 
 The **Win Rates over Time** page plots individual players' win rates, wins,
 losses, dynasty credits, game margins, point differential, or good-/bad-side

@@ -106,6 +106,7 @@ page = st.navigation(
                 default=True,
             ),
             st.Page("pages/leaderboard.py", title="Leaderboard"),
+            st.Page("pages/sessions_played.py", title="Session Leaderboard"),
         ],
         "Trends": [
             st.Page("pages/win_rates.py", title="Stats over Time"),
